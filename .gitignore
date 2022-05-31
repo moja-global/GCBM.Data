@@ -1,0 +1,6 @@
+/mojadata/mojadata/__pycache__
+/mojadata/mojadata/*.pyc
+/mojadata/mojadata/error/__pycache__
+/mojadata/mojadata/layer/*.pyc
+*.pyc
+*.suo

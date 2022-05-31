@@ -1,0 +1,151 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>adfa27bd-c8aa-4b84-aeb7-5766e169c094</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>D:\GCBM_Standalone\Standalone_Template\tools\Tiler\tiler.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>D:\GCBM_Standalone\Standalone_Template\layers\tiled</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>mojadata</Name>
+    <RootNamespace>mojadata</RootNamespace>
+    <InterpreterId>Global|PythonCore|3.6</InterpreterId>
+    <IsWindowsApplication>False</IsWindowsApplication>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <CommandLineArguments>
+    </CommandLineArguments>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <InterpreterPath>
+    </InterpreterPath>
+    <SuppressEnvironmentCreationPrompt>True</SuppressEnvironmentCreationPrompt>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="mojadata\gdaltiler2d.py" />
+    <Compile Include="mojadata\compressingtiler3d.py" />
+    <Compile Include="mojadata\config.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\error\attributenotfounderror.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\error\__init__.py" />
+    <Compile Include="mojadata\layer\attribute.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\layer\filter\slicevaluefilter.py" />
+    <Compile Include="mojadata\layer\filter\valuefilter.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\layer\filter\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\layer\gcbm\disturbancelayer.py" />
+    <Compile Include="mojadata\layer\gcbm\transitionrule.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\layer\gcbm\transitionrulemanager.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\layer\gcbm\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\compressingtiler2d.py" />
+    <Compile Include="mojadata\layer\discretestacklayer.py" />
+    <Compile Include="mojadata\layer\regularstacklayer.py" />
+    <Compile Include="mojadata\passthroughgdaltiler2d.py" />
+    <Compile Include="mojadata\tiler.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\util\gdalhelper.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\util\gdal_calc.py" />
+    <Compile Include="mojadata\util\log.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\util\projecthelper.py" />
+    <Compile Include="mojadata\util\rasterclipper.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\util\validationhelper.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\util\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="setup.py" />
+    <Compile Include="mojadata\block.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\boundingbox.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\cleanup.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\layer\vectorlayer.py" />
+    <Compile Include="mojadata\layer\rasterlayer.py" />
+    <Compile Include="mojadata\layer\layer.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\layer\stacklayer.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\layer\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\sleekdata.py" />
+    <Compile Include="mojadata\sleek.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\tile.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\tiler3d.py" />
+    <Compile Include="mojadata\tiler2d.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="mojadata\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="build_wheel.bat" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="mojadata\" />
+    <Folder Include="mojadata\layer\" />
+    <Folder Include="mojadata\layer\gcbm\" />
+    <Folder Include="mojadata\layer\filter\" />
+    <Folder Include="mojadata\error\" />
+    <Folder Include="mojadata\util\" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="Global|PythonCore|2.7" />
+    <InterpreterReference Include="Global|PythonCore|2.7-32" />
+    <InterpreterReference Include="Global|PythonCore|3.6" />
+  </ItemGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+  </PropertyGroup>
+  <!-- Uncomment the CoreCompile target to enable the Build command in
+       Visual Studio and specify your pre- and post-build commands in
+       the BeforeBuild and AfterBuild targets below. -->
+  <!--<Target Name="CoreCompile" />-->
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+</Project>
