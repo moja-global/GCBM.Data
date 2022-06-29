@@ -57,7 +57,7 @@ class VectorLayer(Layer):
         self._name = name
         self._data_type = data_type
         self._nodata_value = nodata_value
-        self._path = os.path.abspath(path)
+        self._path = os.path.abspath(path) if not path.startswith("PG:") else path
         self._layer = layer
         self._raw = raw
         self._date = date
@@ -310,11 +310,11 @@ class VectorLayer(Layer):
 
     @staticmethod
     def is_empty_layer(path, layer=0):
-        if not os.path.exists(path):
+        if not path.startswith("PG:") and not os.path.exists(path):
             return True
 
         ds = ogr.Open(path, 0)
-        if not ds:
+        if ds is None:
             return True
 
         try:

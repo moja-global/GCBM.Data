@@ -6,7 +6,7 @@ class ValidationHelper(object):
 
     @staticmethod
     def require_path(path):
-        if not os.path.exists(path):
+        if not path.startswith("PG:") and not os.path.exists(path):
             raise IOError("File not found: {}".format(path))
 
     @staticmethod

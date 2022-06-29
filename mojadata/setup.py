@@ -8,12 +8,14 @@ from os import path
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
-with open(path.join(here, "readme.rst"), encoding="utf8") as f:
-    long_description = f.read()
+long_description = ""
+long_description_file = path.join(here, "readme.rst")
+if path.exists(long_description_file):
+    long_description = open(long_description_file, encoding="utf8").read()
 
 setup(
     name="mojadata",
-    version="3.7.0",
+    version="3.8.0",
     description="Mojadata Tiler",
     long_description=long_description,
     url="https://github.com/SLEEK-TOOLS/moja.data",

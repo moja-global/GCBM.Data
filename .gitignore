@@ -4,3 +4,7 @@
 /mojadata/mojadata/layer/*.pyc
 *.pyc
 *.suo
+/mojadata/build/lib/mojadata
+/mojadata/dist
+/mojadata/mojadata.egg-info
+/.vs/mojadata
