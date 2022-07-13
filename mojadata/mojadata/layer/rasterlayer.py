@@ -1,6 +1,7 @@
 ﻿import os
 import uuid
 from future.utils import viewitems
+from mojadata.util import gdal_calc
 from mojadata.util import gdalconst
 from mojadata.util import gdal
 from mojadata.util.validationhelper import ValidationHelper
@@ -8,7 +9,8 @@ from mojadata.util.gdalhelper import GDALHelper
 from mojadata.config import (
     GDAL_MEMORY_LIMIT,
     GDAL_WARP_OPTIONS,
-    GDAL_WARP_CREATION_OPTIONS
+    GDAL_WARP_CREATION_OPTIONS,
+    GDAL_CREATION_OPTIONS
 )
 from mojadata.layer.layer import Layer
 from mojadata import cleanup
@@ -139,8 +141,23 @@ class RasterLayer(Layer):
                   options=GDAL_WARP_OPTIONS,
                   creationOptions=GDAL_WARP_CREATION_OPTIONS)
 
+        self._drop_nulls(output_path)
+
         return RasterLayer(output_path, self._attributes, self._attribute_table,
                            date=self._date, tags=self._tags, allow_nulls=self._allow_nulls)
+
+    def _drop_nulls(self, path):
+        # If this layer has an attribute table attached, drop any pixel values
+        # that have been left out of it.
+        if not self._attribute_table:
+            return
+
+        calc = " + ".join((
+            f"isin(A, {list(self._attribute_table.keys())}) * A",
+            f"isin(A, {list(self._attribute_table.keys())}, invert=True) * {self._nodata_value}"
+        ))
+
+        gdal_calc.calc(calc, path, self._nodata_value, creation_options=GDAL_CREATION_OPTIONS, A=path)
 
     def _get_nearest_divisible_resolution(self, min_pixel_size, requested_pixel_size, block_extent):
         nearest_block_divisible_size = \
