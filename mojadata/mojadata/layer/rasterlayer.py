@@ -107,7 +107,6 @@ class RasterLayer(Layer):
         warp_path = os.path.join(tmp_dir, "warp_{}.tif".format(self._name))
         gdal.Warp(warp_path, self._path,
                   targetAlignedPixels=True,
-                  multithread=True,
                   dstSRS=srs,
                   xRes=requested_pixel_size or min_pixel_size,
                   yRes=requested_pixel_size or min_pixel_size,
@@ -133,7 +132,6 @@ class RasterLayer(Layer):
 
         gdal.Warp(output_path, warp_path,
                   targetAlignedPixels=True,
-                  multithread=True,
                   xRes=pixel_size, yRes=pixel_size,
                   outputType=output_type,
                   dstNodata=self._nodata_value,

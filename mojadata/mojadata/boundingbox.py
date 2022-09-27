@@ -155,7 +155,6 @@ class BoundingBox(object):
         info = GDALHelper.info(in_path)
         bounds = info["cornerCoordinates"]
         gdal.Warp(out_path, in_path,
-                  multithread=True,
                   xRes=pixel_size, yRes=pixel_size,
                   outputBounds=(math.floor(bounds["upperLeft"][0]),
                                 math.floor(bounds["lowerRight"][1]),
@@ -169,7 +168,6 @@ class BoundingBox(object):
         gdal.Warp(out_path, in_path,
                   dstSRS=self.srs,
                   xRes=pixel_size, yRes=pixel_size,
-                  multithread=True,
                   outputBounds=(self.info["cornerCoordinates"]["upperLeft"][0],
                                 self.info["cornerCoordinates"]["lowerRight"][1],
                                 self.info["cornerCoordinates"]["lowerRight"][0],
