@@ -54,6 +54,7 @@ class VectorLayer(Layer):
                  data_type=None, layer=None, date=None, tags=None, allow_nulls=False):
         super(self.__class__, self).__init__()
         ValidationHelper.require_path(path)
+        attributes = [attributes] if isinstance(attributes, Attribute) else attributes
         self._name = name
         self._data_type = data_type
         self._nodata_value = nodata_value
@@ -61,12 +62,11 @@ class VectorLayer(Layer):
         self._layer = layer
         self._raw = raw
         self._date = date
-        self._id_attribute = "value_id" if not raw else attributes.name
+        self._id_attribute = "value_id" if not raw else attributes[0].name
         self._attribute_table = {}
         self._tags = tags or []
         self._allow_nulls = allow_nulls
-        self._attributes = [attributes] if isinstance(attributes, Attribute) \
-                                        else attributes
+        self._attributes = attributes
 
     @property
     def name(self):
