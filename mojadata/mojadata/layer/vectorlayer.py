@@ -299,8 +299,12 @@ class VectorLayer(Layer):
             layer_def = layer.GetLayerDefn()
             field_idx = layer_def.GetFieldIndex(self._id_attribute)
             field = layer_def.GetFieldDefn(field_idx)
-            field_type_code = field.GetType()
             field_type_name = field.GetTypeName().lower()
+
+            # Kludge for fields of type "real", which are often floats, sometimes
+            # getting a UInt type code in GetType().
+            field_type_code = gdal.GDT_Float32 if field_type_name == "real" else field.GetType()
+
             field_type_code_family = gdal.GDT_Int32 if "int" in field_type_name else gdal.GDT_Float32
             return field_type_code or field_type_code_family
         except:

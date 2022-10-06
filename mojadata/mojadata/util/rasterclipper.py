@@ -15,4 +15,5 @@ def clip_raster(bounding_box_layer, target_layer, output_path):
 
     gdal_calc.calc(calc, output_path, target_layer.nodata_value,
                    creation_options=GDAL_CREATION_OPTIONS, overwrite=True,
+                   type=target_layer.data_type,
                    A=target_layer.path, B=bounding_box_layer.path)
