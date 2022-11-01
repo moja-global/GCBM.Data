@@ -51,6 +51,10 @@ class _TransitionRuleManager(object):
             return self._age_after
 
         @property
+        def classifier_set(self):
+            return self._classifier_values
+
+        @property
         def classifier_values(self):
             return self._classifier_values.values()
 
@@ -101,29 +105,24 @@ class _TransitionRuleManager(object):
             os.makedirs(rules_dir)
 
         with self._open_csv(output_path) as out_file:
-            writer = csv.writer(out_file)
             header = ["id", "regen_delay", "age_after"]
             header.extend(self._find_classifier_names())
-            writer.writerow(header)
+            writer = csv.DictWriter(out_file, header)
+            writer.writeheader()
             for rule, id in sorted(viewitems(self._transition_rules), key=lambda item: item[1]):
-                rule_data = [id, rule.regen_delay, rule.age_after]
-                rule_data.extend(rule.classifier_values)
-
-                # Fill any unspecified classifier values with wildcards.
-                if len(rule_data) < len(header):
-                    rule_data.extend(("?") * (len(header) - len(rule_data)))
-
+                rule_data = {"id": id, "regen_delay": rule.regen_delay, "age_after": rule.age_after}
+                rule_data.update(rule.classifier_set)
                 writer.writerow(rule_data)
 
     def _open_csv(self, path):
         return open(path, "wb") if sys.version_info[0] == 2 \
-            else open(path, "w", newline="")
+            else open(path, "w", newline="", encoding="utf-8", errors="surrogateescape")
 
     def _find_classifier_names(self):
-        classifier_names = []
-        for rule in self._transition_rules.keys():
-            if len(rule.classifier_names) > len(classifier_names):
-                classifier_names = rule.classifier_names
+        classifier_names = set()
+        for rule in self._transition_rules:
+            for name in rule.classifier_names:
+                classifier_names.add(name)
 
         return classifier_names
 
