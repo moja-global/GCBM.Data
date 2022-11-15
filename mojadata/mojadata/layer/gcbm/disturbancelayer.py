@@ -1,5 +1,9 @@
 ﻿import logging
+import pandas as pd
 from future.utils import viewitems
+from mojadata.util import gdal
+from mojadata.util import gdalconst
+from mojadata.util.gdalhelper import GDALHelper
 from mojadata.layer.layer import Layer
 from mojadata.layer.rasterlayer import RasterLayer
 from mojadata.layer.attribute import Attribute
@@ -79,9 +83,63 @@ class DisturbanceLayer(Layer):
 
     @property
     def attribute_table(self):
+        return self._build_attribute_table(self._layer)
+
+    def is_empty(self):
+        return self._layer.is_empty()
+
+    def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
+                   data_type=None, bounds=None):
+        raster, messages = self._layer.as_raster_layer(
+            srs, min_pixel_size, block_extent, requested_pixel_size,
+            data_type, bounds)
+
+        self.messages = messages
+        if not raster:
+            return None
+
+        # Handle the situation where a raster with no user-provided interpretation
+        # is used as a disturbance layer, in which case we use all non-nodata pixel
+        # values.
+        attribute_table = (
+            self.attribute_table if self._layer.attributes
+            else self._build_attribute_table(raster)
+        )
+        
+        if not attribute_table:
+            return None
+
+        # Layer might also include some extra attributes that aren't part of the
+        # core disturbance attributes, but make up some additional metadata used
+        # by specific modules.
+        disturbance_attributes = [attr.db_name for attr in (
+            self._year, self._disturbance_type) if isinstance(attr, Attribute)]
+
+        if self._transition:
+            disturbance_attributes.extend([attr.db_name for attr in (
+                self._transition.regen_delay, self._transition.age_after)
+                if isinstance(attr, Attribute)])
+
+            if isinstance(self._transition.classifiers, list):
+                disturbance_attributes.extend(self._transition.classifiers)
+
+        self._metadata_attributes = list(set(raster.attributes) - set(disturbance_attributes))
+
+        return RasterLayer(raster.path, self.attributes, attribute_table, tags=self.tags)
+
+    def _build_attribute_table(self, layer):
         attr_table = {}
-        for pixel_value, attr_values in viewitems(self._layer.attribute_table):
-            attr_values = dict(zip(self._layer.attributes, attr_values))
+
+        layer_attributes = layer.attributes
+        layer_attribute_table = layer.attribute_table
+        if not layer_attributes:
+            layer_attributes = ["value"]
+            layer_attribute_table = {
+                int(v): [int(v)] for v in self._get_unique_values(layer)
+            }
+
+        for pixel_value, attr_values in viewitems(layer_attribute_table):
+            attr_values = dict(zip(layer_attributes, attr_values))
 
             for required_attr in [
                 attr.db_name for attr in (self._year, self._disturbance_type)
@@ -130,33 +188,30 @@ class DisturbanceLayer(Layer):
 
         return attr_table
 
-    def is_empty(self):
-        return self._layer.is_empty()
+    def _get_unique_values(self, layer):
+        ds = gdal.Open(layer.path, gdalconst.GA_ReadOnly)
+        if not ds:
+            return []
 
-    def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
-                   data_type=None, bounds=None):
-        raster, messages = self._layer.as_raster_layer(
-            srs, min_pixel_size, block_extent, requested_pixel_size,
-            data_type, bounds)
+        try:
+            # Disturbance layers are unlikely to have pixel values outside of
+            # the range of an int16, so we generate an exact histogram based on
+            # that assumption.
+            range_min, range_max = GDALHelper.int16_range
+            histogram = pd.DataFrame(
+                ds.GetRasterBand(1).GetHistogram(
+                    min=range_min - 0.5, max=range_max + 0.5, buckets=pow(2, 16),
+                    approx_ok=False, include_out_of_range=True),
+                columns=["px_count"])
 
-        self.messages = messages
-        if not raster or not self.attribute_table:
-            return None
+            nodata = layer.nodata_value
+            unique_values = [
+                range_min + v for v in histogram[histogram.px_count > 0].index
+                if range_min + v != nodata
+            ]
 
-        # Layer might also include some extra attributes that aren't part of the
-        # core disturbance attributes, but make up some additional metadata used
-        # by specific modules.
-        disturbance_attributes = [attr.db_name for attr in (
-            self._year, self._disturbance_type) if isinstance(attr, Attribute)]
-
-        if self._transition:
-            disturbance_attributes.extend([attr.db_name for attr in (
-                self._transition.regen_delay, self._transition.age_after)
-                if isinstance(attr, Attribute)])
-
-            if isinstance(self._transition.classifiers, list):
-                disturbance_attributes.extend(self._transition.classifiers)
-
-        self._metadata_attributes = list(set(raster.attributes) - set(disturbance_attributes))
-
-        return RasterLayer(raster.path, self.attributes, self.attribute_table, tags=self.tags)
+            return unique_values
+        except Exception as e:
+            return []
+        finally:
+            ds = None
