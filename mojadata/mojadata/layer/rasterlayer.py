@@ -111,7 +111,7 @@ class RasterLayer(Layer):
                   xRes=requested_pixel_size or min_pixel_size,
                   yRes=requested_pixel_size or min_pixel_size,
                   warpMemoryLimit=GDAL_MEMORY_LIMIT,
-                  options=GDAL_WARP_OPTIONS,
+                  options=GDAL_WARP_OPTIONS.copy(),
                   creationOptions=GDAL_WARP_CREATION_OPTIONS,
                   outputBounds=bounds)
 
@@ -136,7 +136,7 @@ class RasterLayer(Layer):
                   outputType=output_type,
                   dstNodata=self._nodata_value,
                   warpMemoryLimit=GDAL_MEMORY_LIMIT,
-                  options=GDAL_WARP_OPTIONS,
+                  options=GDAL_WARP_OPTIONS.copy(),
                   creationOptions=GDAL_WARP_CREATION_OPTIONS)
 
         self._drop_nulls(output_path)

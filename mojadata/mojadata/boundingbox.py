@@ -161,7 +161,7 @@ class BoundingBox(object):
                                 math.ceil(bounds["lowerRight"][0]),
                                 math.ceil(bounds["upperLeft"][1])),
                   warpMemoryLimit=GDAL_MEMORY_LIMIT,
-                  options=GDAL_WARP_OPTIONS,
+                  options=GDAL_WARP_OPTIONS.copy(),
                   creationOptions=GDAL_WARP_CREATION_OPTIONS)
 
     def _warp(self, in_path, out_path, pixel_size):
@@ -174,5 +174,5 @@ class BoundingBox(object):
                                 self.info["cornerCoordinates"]["upperLeft"][1]),
                   targetAlignedPixels=True,
                   warpMemoryLimit=GDAL_MEMORY_LIMIT,
-                  options=GDAL_WARP_OPTIONS,
+                  options=GDAL_WARP_OPTIONS.copy(),
                   creationOptions=GDAL_WARP_CREATION_OPTIONS)

@@ -13,6 +13,8 @@ TILER_MEMORY_LIMIT = int(psutil.virtual_memory().available * 0.75 / MEMORY_LIMIT
 PROCESS_MEMORY_LIMIT = int(TILER_MEMORY_LIMIT / PROCESS_POOL_SIZE)
 GDAL_MEMORY_LIMIT = int(PROCESS_MEMORY_LIMIT / GDAL_THREADS)
 
+# WARNING: GDAL mutates these lists when passed to its bindings using the "options="
+# argument. Always copy when using!
 GDAL_OPTIONS = []
 GDAL_WARP_OPTIONS = GDAL_OPTIONS + ["NUM_THREADS={}".format(GDAL_THREADS)]
 GDAL_TRANSLATE_OPTIONS = GDAL_OPTIONS + ["NUM_THREADS={}".format(GDAL_THREADS)]

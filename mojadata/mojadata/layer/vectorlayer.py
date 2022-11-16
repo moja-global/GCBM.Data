@@ -170,7 +170,7 @@ class VectorLayer(Layer):
             noData=self._nodata_value,
             creationOptions=GDAL_RASTERIZE_CREATION_OPTIONS,
             targetAlignedPixels=True,
-            options=GDAL_RASTERIZE_OPTIONS \
+            options=GDAL_RASTERIZE_OPTIONS.copy() \
                 + ["-ot", GDALHelper.type_code_lookup.get(self._data_type) or "Float32"])
 
         return RasterLayer(tmp_raster_path, self.attributes, self._attribute_table,
