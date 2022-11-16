@@ -27,11 +27,11 @@ class GDALHelper(object):
 
         :param range: tuple of min, max range to fit into a data type
         '''
-        return   gdal.GDT_Float32 if allow_float and not (float(range[0]).is_integer() and float(range[1]).is_integer()) \
-            else gdal.GDT_Byte    if range[0] >= GDALHelper.byte_range[0]   and range[1] <= GDALHelper.byte_range[1]     \
-            else gdal.GDT_Int16   if range[0] >= GDALHelper.int16_range[0]  and range[1] <= GDALHelper.int16_range[1]    \
-            else gdal.GDT_UInt16  if range[0] >= GDALHelper.uint16_range[0] and range[1] <= GDALHelper.uint16_range[1]   \
-            else gdal.GDT_Int32   if range[0] >= GDALHelper.int32_range[0]  and range[1] <= GDALHelper.int32_range[1]    \
+        return   gdal.GDT_Float32 if allow_float and not (float(range[0]).is_integer() and float(range[1]).is_integer())   \
+            else gdal.GDT_Byte    if range[0] >= GDALHelper.byte_range[0]   and range[1] <= GDALHelper.byte_range[1]   - 1 \
+            else gdal.GDT_Int16   if range[0] >= GDALHelper.int16_range[0]  and range[1] <= GDALHelper.int16_range[1]  - 1 \
+            else gdal.GDT_UInt16  if range[0] >= GDALHelper.uint16_range[0] and range[1] <= GDALHelper.uint16_range[1] - 1 \
+            else gdal.GDT_Int32   if range[0] >= GDALHelper.int32_range[0]  and range[1] <= GDALHelper.int32_range[1]  - 1 \
             else gdal.GDT_UInt32
 
     @staticmethod
