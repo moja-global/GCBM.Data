@@ -166,8 +166,8 @@ class DisturbanceLayer(Layer):
                     regen_delay, age_after, transition_values)
 
             values = [
-                attr_values.get(self._year.db_name)
-                if isinstance(self._year, Attribute) else self._year,
+                int(float(attr_values.get(self._year.db_name)))
+                if isinstance(self._year, Attribute) else int(float(self._year)),
                 attr_values.get(self._disturbance_type.db_name)
                 if isinstance(self._disturbance_type, Attribute) else self._disturbance_type]
 
