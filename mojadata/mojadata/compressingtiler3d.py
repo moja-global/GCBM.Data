@@ -30,7 +30,8 @@ class CompressingTiler3D(Tiler):
     :type block_extent: float
     '''
 
-    def __init__(self, bounding_box, tile_extent=1.0, block_extent=0.1):
+    def __init__(self, bounding_box, tile_extent=1.0, block_extent=0.1, **kwargs):
+        super().__init__(**kwargs)
         self._log = get_logger(self.__class__)
         self._bounding_box = bounding_box
         self._tile_extent = tile_extent

@@ -6,9 +6,7 @@ from mojadata.util.log import get_logger
 from future.utils import viewitems
 from mojadata.util import gdal
 from mojadata.tiler import Tiler
-from mojadata.config import (
-    GDAL_MEMORY_LIMIT
-)
+from mojadata.config import GDAL_MEMORY_LIMIT
 
 class PassthroughGdalTiler2D(Tiler):
     '''
@@ -28,7 +26,8 @@ class PassthroughGdalTiler2D(Tiler):
     :type compact_attribute_table: bool
     '''
 
-    def __init__(self, tile_extent=1.0, block_extent=0.1, compact_attribute_table=False):
+    def __init__(self, tile_extent=1.0, block_extent=0.1, compact_attribute_table=False, **kwargs):
+        super().__init__(**kwargs)
         self._log = get_logger(self.__class__)
         self._tile_extent = tile_extent
         self._block_extent = block_extent

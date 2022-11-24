@@ -41,7 +41,9 @@ class CompressingTiler2D(Tiler):
     '''
 
     def __init__(self, bounding_box, tile_extent=1.0, block_extent=0.1,
-                 use_bounding_box_resolution=False, compact_attribute_table=False):
+                 use_bounding_box_resolution=False, compact_attribute_table=False,
+                 **kwargs):
+        super().__init__(**kwargs)
         self._log = get_logger(self.__class__)
         self._bounding_box = bounding_box
         self._tile_extent = tile_extent

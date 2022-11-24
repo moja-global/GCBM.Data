@@ -1,4 +1,4 @@
-import io
+import logging
 import simplejson as json
 from ftfy import fix_encoding
 from collections import OrderedDict
@@ -11,6 +11,9 @@ class Tiler(object):
     Base class for tilers which convert raw spatial data into formats supported
     by the Flint platform.
     '''
+
+    def __init__(self, workers=PROCESS_POOL_SIZE):
+        self._workers = workers
 
     def tile(self, items):
         '''
@@ -37,7 +40,8 @@ class Tiler(object):
         return study_area_info
 
     def _create_pool(self, initializer=None, init_args=None):
-        return Pool(PROCESS_POOL_SIZE, initializer, init_args)
+        logging.info("Creating pool with {} workers.".format(self._workers))
+        return Pool(self._workers, initializer, init_args)
 
     @staticmethod
     def write_json(obj, path):
