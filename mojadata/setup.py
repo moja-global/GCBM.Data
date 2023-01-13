@@ -15,7 +15,7 @@ if path.exists(long_description_file):
 
 setup(
     name="mojadata",
-    version="4.0.2",
+    version="4.0.3",
     description="Mojadata Tiler",
     long_description=long_description,
     url="https://github.com/SLEEK-TOOLS/moja.data",

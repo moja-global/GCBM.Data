@@ -3,7 +3,7 @@ import simplejson as json
 from ftfy import fix_encoding
 from collections import OrderedDict
 from multiprocessing import Pool
-from mojadata.config import *
+from mojadata import config
 import numpy as np
 
 class Tiler(object):
@@ -12,8 +12,9 @@ class Tiler(object):
     by the Flint platform.
     '''
 
-    def __init__(self, workers=PROCESS_POOL_SIZE):
+    def __init__(self, workers=config.PROCESS_POOL_SIZE):
         self._workers = workers
+        config.refresh(workers)
 
     def tile(self, items):
         '''
