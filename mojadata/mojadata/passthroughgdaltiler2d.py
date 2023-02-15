@@ -107,10 +107,9 @@ def _tile_layer(layer_idx):
 
         raster_name = "{}_moja".format("".join(layer_name.split("_moja")))
         ext = os.path.splitext(layer.path)[1]
-        shutil.copyfile(layer.path, os.path.join("{}{}".format(raster_name, ext)))
-
-        metadata_path = "{}.json".format(raster_name)
-        _write_metadata(layer, config, metadata_path)
+        output_raster_path = os.path.join("{}{}".format(raster_name, ext))
+        shutil.copyfile(layer.path, output_raster_path)
+        _write_metadata(layer, config, output_raster_path)
     except Exception as e:
         messages.append((logging.ERROR, "Error in layer '{}': {}".format(layer_name, e)))
         messages.append((logging.DEBUG, traceback.format_exc()))
@@ -118,7 +117,12 @@ def _tile_layer(layer_idx):
 
     return layer_name, True, messages
 
-def _write_metadata(layer, config, path):
+def _write_native_attribute_table(path, attributes):
+    layer = gdal.Open(path)
+    band = layer.GetRasterBand(1)
+    band.SetCategoryNames(attributes)
+
+def _write_metadata(layer, config, output_raster_path):
     metadata = {
         "layer_type"  : "GridLayer",
         "layer_data"  : layer.data_type,
@@ -137,12 +141,17 @@ def _write_metadata(layer, config, path):
             metadata["attributes"] = layer.attribute_table
         else:
             attributes = {}
+            native_attributes = ["null"]
             for pixel_value, attr_values in viewitems(layer.attribute_table):
                 if len(attr_values) == 1:
                     attributes[pixel_value] = attr_values[0]
+                    native_attributes.append(str(attr_values[0]))
                 else:
                     attributes[pixel_value] = dict(zip(layer.attributes, attr_values))
+                    native_attributes.append(repr([str(v) for v in attr_values]))
 
             metadata["attributes"] = attributes
+            _write_native_attribute_table(output_raster_path, native_attributes)
 
-    Tiler.write_json(metadata, path)
+    metadata_path = "{}.json".format(os.path.splitext(output_raster_path)[0])
+    Tiler.write_json(metadata, metadata_path)
