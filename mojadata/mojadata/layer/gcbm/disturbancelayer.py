@@ -7,7 +7,7 @@ from mojadata.layer.layer import Layer
 from mojadata.layer.rasterlayer import RasterLayer
 from mojadata.layer.attribute import Attribute
 from mojadata.config import GDAL_CREATION_OPTIONS
-from mojadata.util import gdal_calc
+from mojadata.util.gdal_calc import Calc
 
 
 class DisturbanceLayer(Layer):
@@ -192,7 +192,7 @@ class DisturbanceLayer(Layer):
         cleanup.register_temp_dir(tmp_dir)
         nodata = layer.nodata_value
         output_path = os.path.join(tmp_dir, layer.name)
-        gdal_calc.calc("A != {}".format(nodata), output_path, nodata_value=nodata,
+        Calc("A != {}".format(nodata), output_path, nodata_value=nodata,
                        creation_options=GDAL_CREATION_OPTIONS, A=layer.path)
 
         return RasterLayer(output_path, ["disturbed"], {1: [1]}, name=layer.name)

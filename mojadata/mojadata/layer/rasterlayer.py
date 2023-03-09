@@ -1,7 +1,7 @@
 ﻿import os
 import uuid
 from future.utils import viewitems
-from mojadata.util import gdal_calc
+from mojadata.util.gdal_calc import Calc
 from mojadata.util import gdalconst
 from mojadata.util import gdal
 from mojadata.util.validationhelper import ValidationHelper
@@ -155,7 +155,7 @@ class RasterLayer(Layer):
             f"isin(A, {list(self._attribute_table.keys())}, invert=True) * {self._nodata_value}"
         ))
 
-        gdal_calc.calc(calc, path, self._nodata_value, creation_options=GDAL_CREATION_OPTIONS, A=path)
+        Calc(calc, path, self._nodata_value, creation_options=GDAL_CREATION_OPTIONS, A=path)
 
     def _get_nearest_divisible_resolution(self, min_pixel_size, requested_pixel_size, block_extent):
         nearest_block_divisible_size = \
