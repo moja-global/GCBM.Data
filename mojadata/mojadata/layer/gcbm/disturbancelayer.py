@@ -193,6 +193,6 @@ class DisturbanceLayer(Layer):
         nodata = layer.nodata_value
         output_path = os.path.join(tmp_dir, layer.name)
         Calc("A != {}".format(nodata), output_path, nodata_value=nodata,
-                       creation_options=GDAL_CREATION_OPTIONS, A=layer.path)
+             creation_options=GDAL_CREATION_OPTIONS, A=layer.path, quiet=True)
 
         return RasterLayer(output_path, ["disturbed"], {1: [1]}, name=layer.name)

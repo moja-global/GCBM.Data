@@ -155,7 +155,12 @@ class RasterLayer(Layer):
             f"isin(A, {list(self._attribute_table.keys())}, invert=True) * {self._nodata_value}"
         ))
 
-        Calc(calc, path, self._nodata_value, creation_options=GDAL_CREATION_OPTIONS, A=path)
+        tmp_path = os.path.join(os.path.dirname(path), f"{os.path.basename(path)}_drop_nulls.tiff")
+        os.rename(path, tmp_path)
+        Calc(calc, path, self._nodata_value, creation_options=GDAL_CREATION_OPTIONS,
+             A=tmp_path, overwrite=True, quiet=True)
+
+        os.remove(tmp_path)
 
     def _get_nearest_divisible_resolution(self, min_pixel_size, requested_pixel_size, block_extent):
         nearest_block_divisible_size = \
