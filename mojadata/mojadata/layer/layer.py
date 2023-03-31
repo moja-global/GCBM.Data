@@ -129,6 +129,9 @@ class Layer(object):
         gdal.PushErrorHandler(self._gdal_error_handler)
         try:
             result = self._rasterize(*args, **kwargs)
+            if result and result.is_empty():
+                self.add_message((logging.INFO, f"{self.name} has no data after processing"))
+                
             return result if result and not result.is_empty() else None, self.messages
         except Exception as e:
             self.add_message((logging.ERROR, str(e)))

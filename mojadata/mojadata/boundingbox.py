@@ -1,9 +1,11 @@
 ﻿import os
+import shutil
 import math
 from mojadata.util import osr
 from mojadata.util import gdal
 from mojadata.util.gdalhelper import GDALHelper
 from mojadata.util.rasterclipper import clip_raster
+from mojadata.util.rasterclipper import shrink_to_data
 from mojadata.config import (
     TILER_MEMORY_LIMIT,
     GDAL_MEMORY_LIMIT,
@@ -35,13 +37,14 @@ class BoundingBox(object):
     :type preprocessed: bool
     '''
 
-    def __init__(self, layer, epsg=4326, pixel_size=0.00025, preprocessed=False):
+    def __init__(self, layer, epsg=4326, pixel_size=0.00025, preprocessed=False, shrink_to_data=False):
         self._info = None
         self._srs = None
         self._layer = layer
         self._initialized = preprocessed
         self._epsg = epsg
         self._pixel_size = pixel_size
+        self._shrink_to_data = shrink_to_data
         if preprocessed:
             self._pixel_size = self.info["geoTransform"][1]
 
@@ -141,14 +144,23 @@ class BoundingBox(object):
             raise RuntimeError("Error processing bounding box: {}".format(
                 os.linesep.join((m[1] for m in messages))))
 
+        layer_path, ext = os.path.splitext(self._layer.path)
+        tmp_dir = os.path.basename(self._layer.path)
+        cleanup.register_temp_dir(tmp_dir)
+
+        gdal.SetCacheMax(TILER_MEMORY_LIMIT)
+
+        if self._shrink_to_data:
+            shrink_path = "{}_bbox_shrink{}".format(layer_path, ext)
+            shrink_to_data(self._layer, shrink_path)
+            self._layer.path = shrink_path
+
         # Go through the same warping process as the rest of the layers to
         # ensure the same raster dimensions; sometimes off by 1 without this.
-        layer_path, ext = os.path.splitext(self._layer.path)
         final_bbox_path = os.path.abspath("bounding_box{}".format(ext))
-        gdal.SetCacheMax(TILER_MEMORY_LIMIT)
         self._warp(self._layer.path, final_bbox_path, self._pixel_size)
-        cleanup.register_temp_dir(os.path.basename(self._layer.path))
         self._layer.path = final_bbox_path
+
         gdal.SetCacheMax(GDAL_MEMORY_LIMIT)
 
     def _pad(self, in_path, out_path, pixel_size):
