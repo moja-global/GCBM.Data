@@ -31,7 +31,7 @@ setup(
     ],
     keywords="moja.global",
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
-    install_requires=["numpy", "simplejson", "future", "psutil", "six", "ftfy", "osgeo_utils"],
+    install_requires=["numpy", "simplejson", "future", "psutil", "six", "ftfy", "gdal-utils"],
     extras_require={},
     package_data={},
     data_files=[],
