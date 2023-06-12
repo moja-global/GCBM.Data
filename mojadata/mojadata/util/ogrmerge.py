@@ -163,9 +163,9 @@ class XMLWriter(object):
         xml_attrs = ''
         if attrs is not None:
             for key in attrs:
-                xml_attrs = xml_attrs + ' %s=\"%s\"' % (key, _Esc(attrs[key].encode('utf-8')))
+                xml_attrs = xml_attrs + ' %s=\"%s\"' % (key, _Esc(attrs[key]))
         x = '%s<%s%s>\n' % (self._indent(), name, xml_attrs)
-        x = x.encode('utf-8')
+        x = x
         _VSIFPrintfL(self.f, x)
         self.inc = self.inc + 1
         self.elements.append(name)
@@ -174,10 +174,10 @@ class XMLWriter(object):
         xml_attrs = ''
         if attrs is not None:
             for key in attrs:
-                xml_attrs = xml_attrs + ' %s=\"%s\"' % (key, _Esc(attrs[key].encode('utf-8')))
+                xml_attrs = xml_attrs + ' %s=\"%s\"' % (key, _Esc(attrs[key]))
         x = '%s<%s%s>%s</%s>\n' % (self._indent(), name, xml_attrs,
-                      _Esc(value.encode('utf-8')), name)
-        x = x.encode('utf-8')
+                      _Esc(value), name)
+        x = x
         _VSIFPrintfL(self.f, x)
 
     def close_element(self, closing_name=None):
