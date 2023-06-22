@@ -414,7 +414,7 @@ def process(argv, progress=None, progress_arg=None):
 
                 src_lyr_name = src_lyr.GetName()
                 try:
-                    src_lyr_name = src_lyr_name.decode('utf-8')
+                    src_lyr_name = src_lyr_name
                 except AttributeError:
                     pass
 
@@ -501,7 +501,7 @@ def process(argv, progress=None, progress_arg=None):
 
                 src_lyr_name = src_lyr.GetName()
                 try:
-                    src_lyr_name = src_lyr_name.decode('utf-8')
+                    src_lyr_name = src_lyr_name
                 except AttributeError:
                     pass
 
