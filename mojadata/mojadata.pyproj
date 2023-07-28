@@ -106,15 +106,7 @@
     <Compile Include="mojadata\layer\__init__.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="mojadata\sleekdata.py" />
-    <Compile Include="mojadata\sleek.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="mojadata\tile.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="mojadata\tiler3d.py" />
-    <Compile Include="mojadata\tiler2d.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="mojadata\__init__.py">

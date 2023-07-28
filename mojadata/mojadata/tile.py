@@ -87,6 +87,7 @@ class Tile(object):
         tile_y = self._conv_o_to_i(o_lat, self._tile_extent)
         tile_cols = self._conv_o_to_i(360.0, self._tile_extent)
         tile_idx = tile_y * tile_cols + tile_x
+
         return tile_idx
 
     def _convert_to_lon_origin(self, value):
@@ -95,5 +96,5 @@ class Tile(object):
     def _convert_to_lat_origin(self, value):
         return value * -1 + 90.0
 
-    def _conv_o_to_i(self, o, partSize):
-        return int((o / partSize) + 0.000000001)
+    def _conv_o_to_i(self, o, part_size):
+        return int((o / part_size) + 0.000000001)
