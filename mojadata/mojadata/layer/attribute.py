@@ -42,6 +42,10 @@
     def db_name(self):
         return self._db_name
 
+    @property
+    def has_filter(self):
+        return self._filter is not None
+
     def filter(self, value):
         '''
         Evaluates the optional filter for a particular value of the attribute.

@@ -133,14 +133,25 @@ class VectorLayer(Layer):
             self.add_message((logging.WARN, "No features remaining in the study area - resolution may be too coarse."))
             return None
 
+        where_clause = "{} IS NOT NULL".format(self._id_attribute)
         if not self._raw:
             self._build_attribute_table(reproj_path)
+        else:
+            if self._attributes[0].has_filter:
+                filtered_values = self._build_raw_filter(reproj_path)
+                if not filtered_values:
+                    self.add_message((logging.WARN, "{} has no unfiltered values - skipping".format(self._name)))
+                    return None
+                
+                where_clause += " AND CAST({} AS STR) IN ({})".format(
+                    self._id_attribute,
+                    ",".join(("'{}'".format(v) for v in filtered_values)))
 
         clip_path = os.path.join(tmp_dir, self._make_name("_clip.db"))
         gdal.VectorTranslate(clip_path, reproj_path, format="SQLite",
                              options=base_ogr2ogr_opts + [
             "-select", self._id_attribute,
-            "-where", "{} IS NOT NULL".format(self._id_attribute)])
+            "-where", where_clause])
 
         # Check that some geometry actually made it through the filtering process - calling
         # gdal.Rasterize on an empty vector layer will cause a hard crash in GDAL.
@@ -213,6 +224,50 @@ class VectorLayer(Layer):
 
     def _make_name(self, ext=""):
         return "{}{}".format(self._name, ext)
+
+    def _find_table_name(self, path):
+        ValidationHelper.require_path(path)
+        ds = ogr.Open(path, 1)
+        if not ds:
+            raise IOError("Error reading file: {}".format(path))
+
+        try:
+            base_filename = os.path.splitext(os.path.basename(self._path))[0].lower()
+            all_tables = ds.ExecuteSQL("SELECT name FROM sqlite_master WHERE type = 'table';")
+            matching_table = None
+            for row in all_tables:
+                table_name = row.GetField(0).lower()
+                if table_name in base_filename or table_name in (self._layer.lower() or ""):
+                    matching_table = table_name
+                    break
+            
+            ds.ReleaseResultSet(all_tables)
+            return matching_table
+        finally:
+            ds = None
+
+    def _build_raw_filter(self, path):
+        ValidationHelper.require_path(path)
+        ds = ogr.Open(path, 1)
+        if not ds:
+            raise IOError("Error reading file: {}".format(path))
+
+        try:
+            filtered_values = []
+            table = self._find_table_name(path)
+            unique_values = ds.ExecuteSQL("SELECT DISTINCT {} FROM {}".format(self._id_attribute, table))
+            for row in unique_values:
+                row_value = row.GetField(0)
+                if self._attributes[0].filter(row_value):
+                    filtered_values.append(row_value)
+        
+            ds.ReleaseResultSet(unique_values)
+            
+            return filtered_values
+        except Exception as e:
+            self.add_message((logging.ERROR, "Error in {}: {}".format(path, e)))
+        finally:
+            ds = None
 
     def _build_attribute_table(self, path):
         ValidationHelper.require_path(path)
