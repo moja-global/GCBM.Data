@@ -5,10 +5,10 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>adfa27bd-c8aa-4b84-aeb7-5766e169c094</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>C:\Projects\1_Standalone_Template\tools\Tiler\tiler.py</StartupFile>
+    <StartupFile>C:\Projects\mojadata_arrowspace_test\tools\Tiler\tiler.py</StartupFile>
     <SearchPath>
     </SearchPath>
-    <WorkingDirectory>C:\Projects\1_Standalone_Template\layers\tiled</WorkingDirectory>
+    <WorkingDirectory>C:\Projects\mojadata_arrowspace_test\layers\tiled</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>mojadata</Name>
     <RootNamespace>mojadata</RootNamespace>

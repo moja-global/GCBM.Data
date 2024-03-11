@@ -30,7 +30,7 @@ class ArrowspaceTiler2D(Tiler):
         self._log = get_logger(self.__class__)
         self._bounding_box = bounding_box
 
-    def tile(self, layers, output_path=".", create_arrowspace_dataset_fn=None):
+    def tile(self, layers, output_path="."):
         working_path = os.path.abspath(os.curdir)
         os.makedirs(output_path, exist_ok=True)
         with TemporaryDirectory(dir=output_path) as working_temp:
@@ -58,7 +58,7 @@ class ArrowspaceTiler2D(Tiler):
                     ) for layer in layers if layer.name in tiled_layers
                 ])
             
-                dataset = create_arrowspace_dataset_fn(
+                dataset = create_arrowspace_dataset(
                     arrowspace_layers, "inventory", "local_storage",
                     os.path.join("..", "inventory.arrowspace"))
             
