@@ -25,18 +25,21 @@ class Tiler(object):
 
     def _get_study_area_info(self):
         study_area_info = {
-            "tile_size": self._tile_extent,
-            "block_size": self._block_extent,
-            "tiles": []
+            "pixel_size": self._bounding_box.pixel_size
         }
 
         for i, tile in enumerate(self._bounding_box.tiles(self._tile_extent, self._block_extent)):
+            if tile is None:
+                break
+            
+            if i == 0:
+                study_area_info["tile_size"] = self._tile_extent
+                study_area_info["block_size"] = self._block_extent
+                study_area_info["tiles"] = []
+
             study_area_info["tiles"].append(OrderedDict(zip(
                 ["x", "y", "index"],
                 [int(loc) for loc in tile.name.split("_")] + [tile.index])))
-
-            if i == 0:
-                study_area_info["pixel_size"] = tile.pixel_size
 
         return study_area_info
 

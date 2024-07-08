@@ -151,14 +151,20 @@ def _write_metadata(layer, config, path):
         "layer_type"  : "GridLayer",
         "layer_data"  : layer.data_type,
         "nodata"      : layer.nodata_value,
-        "tileLatSize" : config["tile_extent"],
-        "tileLonSize" : config["tile_extent"],
-        "blockLatSize": config["block_extent"],
-        "blockLonSize": config["block_extent"],
-        "cellLatSize" : layer.pixel_size,
-        "cellLonSize" : layer.pixel_size
     }
-
+    
+    if layer.is_lat_lon:
+        metadata.update({
+            "tileLatSize" : config["tile_extent"],
+            "tileLonSize" : config["tile_extent"],
+            "blockLatSize": config["block_extent"],
+            "blockLonSize": config["block_extent"],
+            "cellLatSize" : layer.pixel_size,
+            "cellLonSize" : layer.pixel_size
+        })
+    else:
+        metadata["pixel_size"] = layer.pixel_size
+    
     if layer.attribute_table:
         if config["compact_attribute_table"]:
             metadata["attribute_names"] = layer.attributes

@@ -82,6 +82,15 @@ class Layer(object):
             return int(value)
 
     @property
+    def is_lat_lon(self):
+        '''Check if the layer is lat/lon or actual area.'''
+        ds = gdal.Open(self.path)
+        srs = ds.GetSpatialRef()
+        is_lat_lon = srs.EPSGTreatsAsLatLong() == 1
+        
+        return is_lat_lon
+
+    @property
     def messages(self):
         '''Messages generated during the processing of the layer.'''
         return [msg for msg in self._messages]
@@ -155,6 +164,7 @@ class Layer(object):
         :param block_extent: the length of one side of a block, in the layer's
             coordinate system
         '''
+        is_lat_lon = self.is_lat_lon
         ds = gdal.Open(self.path, gdalconst.GA_ReadOnly)
         try:
             info = GDALHelper.info(ds)
@@ -162,13 +172,16 @@ class Layer(object):
             pixel_size = abs(transform[1])
             origin = (transform[0], transform[3])
             bounds = info["cornerCoordinates"]
-            y_min = int(math.floor(bounds["lowerRight"][1]))
-            y_max = int(math.ceil(bounds["upperLeft"][1]))
-            x_min = int(math.floor(bounds["upperLeft"][0]))
-            x_max = int(math.ceil(bounds["lowerRight"][0]))
-            for x in range(x_min, x_max):
-                for y in range(y_min, y_max):
-                    yield Tile(x, y, origin, pixel_size, tile_extent, block_extent)
+            if not is_lat_lon:
+                yield None
+            else:
+                y_min = int(math.floor(bounds["lowerRight"][1]))
+                y_max = int(math.ceil(bounds["upperLeft"][1]))
+                x_min = int(math.floor(bounds["upperLeft"][0]))
+                x_max = int(math.ceil(bounds["lowerRight"][0]))
+                for x in range(x_min, x_max):
+                    for y in range(y_min, y_max):
+                        yield Tile(x, y, origin, pixel_size, tile_extent, block_extent)
         except:
             raise
         finally:
