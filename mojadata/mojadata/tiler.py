@@ -1,6 +1,6 @@
 import logging
 import simplejson as json
-from ftfy import fix_encoding
+from ftfy import guess_bytes
 from collections import OrderedDict
 from multiprocessing import Pool
 from mojadata import config
@@ -56,8 +56,8 @@ class Tiler(object):
         # Fix any unicode errors and ensure the final JSON file is UTF-8. This fixes cases where
         # a shapefile has a bad encoding along with non-ASCII characters, causing the initial
         # write to have either mangled characters or an ASCII encoding when it should be UTF-8.
-        tmp_txt = list(fix_encoding(open(path, "r").read()))
-        open(path, "w", encoding="utf8").writelines(tmp_txt)
+        tmp_txt, _ = guess_bytes(open(path, "rb").read())
+        open(path, "w", encoding="utf8").write(tmp_txt)
 
     @staticmethod
     def _serialize(obj):

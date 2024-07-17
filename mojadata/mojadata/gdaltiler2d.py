@@ -1,5 +1,6 @@
 ﻿import os
 import logging
+import sys
 import traceback
 from mojadata.util.log import get_logger
 from future.utils import viewitems
@@ -181,6 +182,7 @@ def _write_metadata(layer, config, path):
                     native_attributes[int(pixel_value)] = repr([str(v) for v in attr_values])
 
             metadata["attributes"] = attributes
-            _write_native_attribute_table(layer.path, native_attributes)
+            if sys.platform == "win32":
+                _write_native_attribute_table(layer.path, native_attributes)
 
     Tiler.write_json(metadata, path)
