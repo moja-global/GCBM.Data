@@ -57,7 +57,7 @@ class Tiler(object):
         # a shapefile has a bad encoding along with non-ASCII characters, causing the initial
         # write to have either mangled characters or an ASCII encoding when it should be UTF-8.
         tmp_txt, _ = guess_bytes(open(path, "rb").read())
-        open(path, "w", encoding="utf8").write(tmp_txt)
+        open(path, "wb").write(tmp_txt.encode("utf8"))
 
     @staticmethod
     def _serialize(obj):
