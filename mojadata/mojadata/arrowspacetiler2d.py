@@ -7,8 +7,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from pandas import DataFrame
 from future.utils import viewitems
-from arrow_space.input_layer import InputLayer
-from arrow_space.input_layer import InputLayerCollection
+from arrow_space.input.raster_input_layer import RasterInputLayer
+from arrow_space.input.raster_input_layer import RasterInputSource
+from arrow_space.input.attribute_table_reader import InMemoryAttributeTableReader
+from arrow_space.input.input_layer_collection import InputLayerCollection
 from arrow_space.flattened_coordinate_dataset import create as create_arrowspace_dataset
 from mojadata.util.log import get_logger
 from mojadata.util import gdal
@@ -52,15 +54,17 @@ class ArrowspaceTiler2D(Tiler):
                     pool.join()
 
                 arrowspace_layers = InputLayerCollection([
-                    InputLayer(
-                        layer.name, f"{layer.name}_moja.tiff", attribute_table=tiled_layers[layer.name],
-                        tags=layer.tags
+                    RasterInputLayer(
+                        layer.name,
+                        [RasterInputSource(path=f"{layer.name}_moja.tiff")],
+                        InMemoryAttributeTableReader(tiled_layers[layer.name]),
+                        layer.tags
                     ) for layer in layers if layer.name in tiled_layers
                 ])
             
                 dataset = create_arrowspace_dataset(
                     arrowspace_layers, "inventory", "local_storage",
-                    os.path.join("..", "inventory.arrowspace"))
+                    os.path.join("..", "inventory.arrowspace"), {})
             
                 return dataset
             finally:
@@ -128,12 +132,7 @@ def _fix_unicode(_dict):
     # or an ASCII encoding when it should be UTF-8.
     with TemporaryDirectory() as tmp:
         tmp_path = str(Path(tmp).joinpath("attributes.json"))
-        open(tmp_path, "w", encoding="utf8", errors="surrogateescape").write(
-            json.dumps(_dict, ensure_ascii=False))
-
-        tmp_txt = list(fix_encoding(open(tmp_path).read()))
-        open(tmp_path, "w", encoding="utf8").writelines(tmp_txt)
-
+        Tiler.write_json(_dict, tmp_path)
         return json.loads(open(tmp_path, encoding="utf8").read())
 
 def _build_attribute_table(layer):
