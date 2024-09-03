@@ -108,6 +108,7 @@ class RasterLayer(Layer):
         gdal.Warp(warp_path, self._path,
                   targetAlignedPixels=True,
                   dstSRS=srs,
+                  resampleAlg="mode",
                   xRes=requested_pixel_size or min_pixel_size,
                   yRes=requested_pixel_size or min_pixel_size,
                   warpMemoryLimit=GDAL_MEMORY_LIMIT,

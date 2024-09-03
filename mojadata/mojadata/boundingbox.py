@@ -172,6 +172,7 @@ class BoundingBox(object):
                                 math.floor(bounds["lowerRight"][1]),
                                 math.ceil(bounds["lowerRight"][0]),
                                 math.ceil(bounds["upperLeft"][1])),
+                  targetAlignedPixels=True,
                   warpMemoryLimit=GDAL_MEMORY_LIMIT,
                   options=GDAL_WARP_OPTIONS.copy(),
                   creationOptions=GDAL_WARP_CREATION_OPTIONS)
