@@ -237,7 +237,7 @@ class VectorLayer(Layer):
             matching_table = None
             for row in all_tables:
                 table_name = row.GetField(0).lower()
-                if table_name in base_filename or table_name in (self._layer.lower() or ""):
+                if table_name in base_filename or table_name in (self._layer.lower() if self._layer else ""):
                     matching_table = table_name
                     break
             
