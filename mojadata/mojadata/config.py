@@ -5,11 +5,9 @@ from multiprocessing import cpu_count
 # can sometimes cause chunks of layers to go missing (memory issue?) when tiling a
 # large list of layers.
 GDAL_THREADS = min(cpu_count(), 4)
-
 PROCESS_POOL_SIZE = cpu_count()
-MEMORY_LIMIT_SCALE = int(cpu_count() / 10) or 1
 
-TILER_MEMORY_LIMIT = int(psutil.virtual_memory().available * 0.75 / MEMORY_LIMIT_SCALE)
+TILER_MEMORY_LIMIT = int(psutil.virtual_memory().available * 0.75)
 PROCESS_MEMORY_LIMIT = int(TILER_MEMORY_LIMIT / PROCESS_POOL_SIZE)
 GDAL_MEMORY_LIMIT = int(PROCESS_MEMORY_LIMIT / GDAL_THREADS)
 
@@ -58,8 +56,7 @@ def refresh(pool_size):
 
     GDAL_THREADS = min(pool_size, 4)
     PROCESS_POOL_SIZE = pool_size
-    MEMORY_LIMIT_SCALE = int(pool_size / 10) or 1
-    TILER_MEMORY_LIMIT = int(psutil.virtual_memory().available * 0.75 / MEMORY_LIMIT_SCALE)
+    TILER_MEMORY_LIMIT = int(psutil.virtual_memory().available * 0.75)
     PROCESS_MEMORY_LIMIT = int(TILER_MEMORY_LIMIT / PROCESS_POOL_SIZE)
     GDAL_MEMORY_LIMIT = int(PROCESS_MEMORY_LIMIT / GDAL_THREADS)
     GDAL_OPTIONS = []

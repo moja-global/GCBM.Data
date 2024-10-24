@@ -97,7 +97,7 @@ class VectorLayer(Layer):
         return self._date
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
-                   data_type=None, bounds=None, preserve_temp_files=False):
+                   data_type=None, bounds=None, preserve_temp_files=False, **kwargs):
         tmp_dir = "_".join((os.path.abspath(self._make_name()), str(uuid.uuid1())[:4]))
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
@@ -179,7 +179,7 @@ class VectorLayer(Layer):
             outputSRS=srs, outputBounds=bounds,
             attribute=self._id_attribute,
             noData=self._nodata_value,
-            creationOptions=GDAL_RASTERIZE_CREATION_OPTIONS,
+            creationOptions=GDAL_RASTERIZE_CREATION_OPTIONS + ["SPARSE_OK=YES"],
             targetAlignedPixels=True,
             options=GDAL_RASTERIZE_OPTIONS.copy() \
                 + ["-ot", GDALHelper.type_code_lookup.get(self._data_type) or "Float32"])

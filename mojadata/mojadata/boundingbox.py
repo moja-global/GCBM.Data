@@ -84,7 +84,7 @@ class BoundingBox(object):
         for tile in self._layer.tiles(tile_extent, block_extent):
             yield tile
 
-    def normalize(self, layer, block_extent, requested_pixel_size=None, data_type=None):
+    def normalize(self, layer, block_extent, requested_pixel_size=None, data_type=None, strict_resampling=False):
         '''
         Processes a layer to conform to the bounding box: projection, pixel size,
         spatial extent.
@@ -108,7 +108,7 @@ class BoundingBox(object):
 
         result, messages = layer.as_raster_layer(
             self.srs, self._pixel_size, block_extent, requested_pixel_size,
-            data_type, bounds)
+            data_type, bounds, strict_resampling=strict_resampling)
 
         if not result:
             return None, messages
@@ -137,9 +137,13 @@ class BoundingBox(object):
         self._srs = bbox.GetProjection()
 
     def _process_bounding_box(self):
+        gdal.SetCacheMax(TILER_MEMORY_LIMIT)
+
         dest_srs = osr.SpatialReference()
         dest_srs.ImportFromEPSG(self._epsg)
-        self._layer, messages = self._layer.as_raster_layer(dest_srs, self._pixel_size, 0.1)
+        self._layer, messages = self._layer.as_raster_layer(
+            dest_srs, self._pixel_size, 0.1, memory_limit=TILER_MEMORY_LIMIT)
+
         if not self._layer:
             raise RuntimeError("Error processing bounding box: {}".format(
                 os.linesep.join((m[1] for m in messages))))
@@ -147,8 +151,6 @@ class BoundingBox(object):
         layer_path, ext = os.path.splitext(self._layer.path)
         tmp_dir = os.path.basename(self._layer.path)
         cleanup.register_temp_dir(tmp_dir)
-
-        gdal.SetCacheMax(TILER_MEMORY_LIMIT)
 
         if self._shrink_to_data:
             shrink_path = "{}_bbox_shrink{}".format(layer_path, ext)
@@ -158,7 +160,7 @@ class BoundingBox(object):
         # Go through the same warping process as the rest of the layers to
         # ensure the same raster dimensions; sometimes off by 1 without this.
         final_bbox_path = os.path.abspath("bounding_box{}".format(ext))
-        self._warp(self._layer.path, final_bbox_path, self._pixel_size)
+        self._warp(self._layer.path, final_bbox_path, self._pixel_size, memory_limit=TILER_MEMORY_LIMIT)
         self._layer.path = final_bbox_path
 
         gdal.SetCacheMax(GDAL_MEMORY_LIMIT)
@@ -177,7 +179,7 @@ class BoundingBox(object):
                   options=GDAL_WARP_OPTIONS.copy(),
                   creationOptions=GDAL_WARP_CREATION_OPTIONS)
 
-    def _warp(self, in_path, out_path, pixel_size):
+    def _warp(self, in_path, out_path, pixel_size, memory_limit=None):
         gdal.Warp(out_path, in_path,
                   dstSRS=self.srs,
                   xRes=pixel_size, yRes=pixel_size,
@@ -186,6 +188,6 @@ class BoundingBox(object):
                                 self.info["cornerCoordinates"]["lowerRight"][0],
                                 self.info["cornerCoordinates"]["upperLeft"][1]),
                   targetAlignedPixels=True,
-                  warpMemoryLimit=GDAL_MEMORY_LIMIT,
+                  warpMemoryLimit=memory_limit or GDAL_MEMORY_LIMIT,
                   options=GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=GDAL_WARP_CREATION_OPTIONS)
+                  creationOptions=GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"])

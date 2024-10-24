@@ -74,7 +74,10 @@ class Layer(object):
     def nodata_value(self):
         '''The layer nodata value in its correct python type.'''
         info = GDALHelper.info(self.path)
-        value = info["bands"][0]["noDataValue"]
+        value = info["bands"][0].get("noDataValue")
+        if value is None:
+            return None
+
         dt = str(self.data_type).lower()
         if dt == "float32" or dt == "float" or dt == str(gdal.GDT_Float32):
             return float(value)
@@ -149,7 +152,7 @@ class Layer(object):
             gdal.PopErrorHandler()
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
-                   data_type=None, bounds=None, preserve_temp_files=False):
+                   data_type=None, bounds=None, preserve_temp_files=False, **kwargs):
         raise NotImplementedError
 
     def tiles(self, tile_extent, block_extent):

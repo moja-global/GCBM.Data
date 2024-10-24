@@ -6,7 +6,7 @@ from future.utils import viewitems
 from mojadata.util import gdal
 from mojadata.tiler import Tiler
 from mojadata.cleanup import cleanup
-from mojadata.config import GDAL_MEMORY_LIMIT
+from mojadata import config as gdal_config
 
 class GdalTiler2D(Tiler):
     '''
@@ -33,7 +33,7 @@ class GdalTiler2D(Tiler):
 
     def __init__(self, bounding_box, tile_extent=1.0, block_extent=0.1,
                  use_bounding_box_resolution=False, compact_attribute_table=False,
-                 **kwargs):
+                 strict_resampling=False, **kwargs):
         super().__init__(**kwargs)
         self._log = get_logger(self.__class__)
         self._bounding_box = bounding_box
@@ -41,8 +41,12 @@ class GdalTiler2D(Tiler):
         self._block_extent = block_extent
         self._use_bounding_box_resolution = use_bounding_box_resolution
         self._compact_attribute_table = compact_attribute_table
+        self._strict_resampling = strict_resampling
 
     def tile(self, layers, output_path="."):
+        if gdal_config.PROCESS_POOL_SIZE > len(layers):
+            gdal_config.refresh(len(layers))
+        
         self._skipped_layers = []
         working_path = os.path.abspath(os.curdir)
         os.makedirs(output_path, exist_ok=True)
@@ -55,7 +59,8 @@ class GdalTiler2D(Tiler):
                     "tile_extent": self._tile_extent,
                     "block_extent": self._block_extent,
                     "use_bbox_res": self._use_bounding_box_resolution,
-                    "compact_attribute_table": self._compact_attribute_table
+                    "compact_attribute_table": self._compact_attribute_table,
+                    "strict_resampling": self._strict_resampling
                 }
 
                 self._log.info("Processing layers...")
@@ -101,12 +106,16 @@ class GdalTiler2D(Tiler):
 
 def _pool_init(_bounding_box, _layers, _config):
     global bbox, layers, config
-    gdal.SetCacheMax(GDAL_MEMORY_LIMIT)
     bbox = _bounding_box
     layers = _layers
     config = _config
 
 def _tile_layer(layer_idx):
+    if gdal_config.PROCESS_POOL_SIZE > len(layers):
+        gdal_config.refresh(len(layers))
+
+    gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
+
     messages = []
     layer_name = ""
     try:
@@ -121,7 +130,8 @@ def _tile_layer(layer_idx):
             layer, layer_messages = bbox.normalize(
                 layer,
                 config["block_extent"],
-                bbox.pixel_size if config["use_bbox_res"] else None)
+                bbox.pixel_size if config["use_bbox_res"] else None,
+                strict_resampling=config["strict_resampling"])
 
             messages += layer_messages
 
