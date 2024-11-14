@@ -90,10 +90,10 @@ class DisturbanceLayer(Layer):
         return self._layer.is_empty()
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
-                   data_type=None, bounds=None):
+                   data_type=None, bounds=None, **kwargs):
         raster, messages = self._layer.as_raster_layer(
             srs, min_pixel_size, block_extent, requested_pixel_size,
-            data_type, bounds)
+            data_type, bounds, **kwargs)
 
         self.messages = messages
         if not raster:
