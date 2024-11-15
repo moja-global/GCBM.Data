@@ -70,8 +70,8 @@ class DummyLayer(Layer):
         return self._attribute_table
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
-                   data_type=None, bounds=None, preserve_temp_files=False, strict_resampling=False,
-                   memory_limit=None, **kwargs):
+                   data_type=None, bounds=None, preserve_temp_files=False, memory_limit=None,
+                   **kwargs):
         tmp_dir = "_".join((os.path.abspath(self._name), str(uuid.uuid1())[:4]))
 
         if not os.path.exists(tmp_dir):

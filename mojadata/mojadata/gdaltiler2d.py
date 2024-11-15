@@ -33,7 +33,7 @@ class GdalTiler2D(Tiler):
 
     def __init__(self, bounding_box, tile_extent=1.0, block_extent=0.1,
                  use_bounding_box_resolution=False, compact_attribute_table=False,
-                 strict_resampling=False, **kwargs):
+                 **kwargs):
         super().__init__(**kwargs)
         self._log = get_logger(self.__class__)
         self._bounding_box = bounding_box
@@ -41,7 +41,6 @@ class GdalTiler2D(Tiler):
         self._block_extent = block_extent
         self._use_bounding_box_resolution = use_bounding_box_resolution
         self._compact_attribute_table = compact_attribute_table
-        self._strict_resampling = strict_resampling
 
     def tile(self, layers, output_path="."):
         if gdal_config.PROCESS_POOL_SIZE > len(layers):
@@ -59,8 +58,7 @@ class GdalTiler2D(Tiler):
                     "tile_extent": self._tile_extent,
                     "block_extent": self._block_extent,
                     "use_bbox_res": self._use_bounding_box_resolution,
-                    "compact_attribute_table": self._compact_attribute_table,
-                    "strict_resampling": self._strict_resampling
+                    "compact_attribute_table": self._compact_attribute_table
                 }
 
                 self._log.info("Processing layers...")
@@ -130,8 +128,7 @@ def _tile_layer(layer_idx):
             layer, layer_messages = bbox.normalize(
                 layer,
                 config["block_extent"],
-                bbox.pixel_size if config["use_bbox_res"] else None,
-                strict_resampling=config["strict_resampling"])
+                bbox.pixel_size if config["use_bbox_res"] else None)
 
             messages += layer_messages
 

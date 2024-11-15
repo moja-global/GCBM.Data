@@ -79,7 +79,9 @@ class Layer(object):
             return None
 
         dt = str(self.data_type).lower()
-        if dt == "float32" or dt == "float" or dt == str(gdal.GDT_Float32):
+        if (dt == "float32" or dt == "float" or dt == str(gdal.GDT_Float32)
+            or dt == "float64" or dt == str(gdal.GDT_Float64)
+        ):
             return float(value)
         else:
             return int(value)

@@ -84,7 +84,7 @@ class BoundingBox(object):
         for tile in self._layer.tiles(tile_extent, block_extent):
             yield tile
 
-    def normalize(self, layer, block_extent, requested_pixel_size=None, data_type=None, strict_resampling=False):
+    def normalize(self, layer, block_extent, requested_pixel_size=None, data_type=None):
         '''
         Processes a layer to conform to the bounding box: projection, pixel size,
         spatial extent.
@@ -108,7 +108,7 @@ class BoundingBox(object):
 
         result, messages = layer.as_raster_layer(
             self.srs, self._pixel_size, block_extent, requested_pixel_size,
-            data_type, bounds, strict_resampling=strict_resampling)
+            data_type, bounds)
 
         if not result:
             return None, messages

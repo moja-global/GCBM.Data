@@ -95,8 +95,8 @@ class RasterLayer(Layer):
         return RasterLayer.is_empty_layer(self._path)
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
-                   data_type=None, bounds=None, preserve_temp_files=False, strict_resampling=False,
-                   memory_limit=None, **kwargs):
+                   data_type=None, bounds=None, preserve_temp_files=False, memory_limit=None,
+                   **kwargs):
         tmp_dir = "_".join((os.path.abspath(self._name), str(uuid.uuid1())[:4]))
 
         if not os.path.exists(tmp_dir):
@@ -105,22 +105,24 @@ class RasterLayer(Layer):
         if not preserve_temp_files:
             cleanup.register_temp_dir(tmp_dir)
 
-        extra_warp_args = {}
-        if self.nodata_value is None and self._nodata_value:
-            extra_warp_args["srcNodata"] = self._nodata_value
+        original_nodata = self.nodata_value
+        if original_nodata is None and self._nodata_value is not None:
+            original_nodata = self._nodata_value
 
         warp_path = os.path.join(tmp_dir, "warp_{}.tif".format(self._name))
         gdal.Warp(warp_path, self._path,
                   targetAlignedPixels=True,
                   dstSRS=srs,
-                  resampleAlg="mode" if strict_resampling else "near",
+                  resampleAlg="mode",
+                  srcNodata=None,
                   xRes=requested_pixel_size or min_pixel_size,
                   yRes=requested_pixel_size or min_pixel_size,
                   warpMemoryLimit=memory_limit or GDAL_MEMORY_LIMIT,
                   options=GDAL_WARP_OPTIONS.copy(),
                   creationOptions=GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
-                  outputBounds=bounds,
-                  **extra_warp_args)
+                  outputBounds=bounds)
+
+        gdal.Open(warp_path, gdal.GA_Update).GetRasterBand(1).SetNoDataValue(original_nodata)
 
         output_path = os.path.join(tmp_dir, "{}.tif".format(self._name))
         is_float = "Float" in self.data_type
