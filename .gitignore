@@ -7,4 +7,5 @@
 /mojadata/build/lib/mojadata
 /mojadata/dist
 /mojadata/mojadata.egg-info
-/.vs/mojadata
+/.vs/*
+*.vsidx
