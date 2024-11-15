@@ -114,7 +114,7 @@ class RasterLayer(Layer):
                   targetAlignedPixels=True,
                   dstSRS=srs,
                   resampleAlg="mode",
-                  srcNodata=None,
+                  srcNodata="None",
                   xRes=requested_pixel_size or min_pixel_size,
                   yRes=requested_pixel_size or min_pixel_size,
                   warpMemoryLimit=memory_limit or GDAL_MEMORY_LIMIT,
