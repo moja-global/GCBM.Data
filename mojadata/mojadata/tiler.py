@@ -12,9 +12,10 @@ class Tiler(object):
     by the Flint platform.
     '''
 
-    def __init__(self, workers=config.PROCESS_POOL_SIZE):
+    def __init__(self, workers=None):
         self._workers = workers
-        config.refresh(workers)
+        if workers:
+            config.refresh(workers)
 
     def tile(self, items):
         '''
@@ -44,8 +45,9 @@ class Tiler(object):
         return study_area_info
 
     def _create_pool(self, initializer=None, init_args=None):
-        logging.info("Creating pool with {} workers.".format(self._workers))
-        return Pool(self._workers, initializer, init_args)
+        workers = self._workers or config.PROCESS_POOL_SIZE
+        logging.info("Creating pool with {} workers.".format(workers))
+        return Pool(workers, initializer, init_args)
 
     @staticmethod
     def write_json(obj, path):
