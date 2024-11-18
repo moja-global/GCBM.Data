@@ -5,11 +5,7 @@ from mojadata.util import gdal
 from mojadata.util import ogr
 from mojadata.util import osr
 from mojadata.util.gdal_calc import Calc
-from mojadata.config import (
-    GDAL_TRANSLATE_OPTIONS,
-    GDAL_TRANSLATE_CREATION_OPTIONS,
-    GDAL_CREATION_OPTIONS
-)
+from mojadata import config as gdal_config
 
 
 def clip_raster(bounding_box_layer, target_layer, output_path):
@@ -22,7 +18,7 @@ def clip_raster(bounding_box_layer, target_layer, output_path):
         bounding_box_layer.nodata_value, target_layer.nodata_value)
 
     Calc(calc, output_path, target_layer.nodata_value,
-         creation_options=GDAL_CREATION_OPTIONS, overwrite=True,
+         creation_options=gdal_config.GDAL_CREATION_OPTIONS, overwrite=True,
          type=target_layer.data_type, A=target_layer.path,
          B=bounding_box_layer.path, quiet=True)
 
@@ -38,7 +34,7 @@ def shrink_to_data(target_layer, output_path):
 
     calc_output_path = os.path.join(tmp_dir, "flattened_data.tif")
     calc = f"1 * (A != {target_layer.nodata_value})"
-    Calc(calc, calc_output_path, 0, creation_options=GDAL_CREATION_OPTIONS,
+    Calc(calc, calc_output_path, 0, creation_options=gdal_config.GDAL_CREATION_OPTIONS,
          type=gdal.GDT_Byte, A=target_layer.path, quiet=True)
 
     src_ds = gdal.Open(target_layer.path)
@@ -57,5 +53,5 @@ def shrink_to_data(target_layer, output_path):
 
     gdal.Translate(output_path, src_ds,
                    projWin=[min_x, max_y, max_x, min_y],
-                   options=GDAL_TRANSLATE_OPTIONS.copy(),
-                   creationOptions=GDAL_TRANSLATE_CREATION_OPTIONS)
+                   options=gdal_config.GDAL_TRANSLATE_OPTIONS.copy(),
+                   creationOptions=gdal_config.GDAL_TRANSLATE_CREATION_OPTIONS)

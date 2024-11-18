@@ -6,12 +6,7 @@ from mojadata.util import gdalconst
 from mojadata.util import gdal
 from mojadata.util.validationhelper import ValidationHelper
 from mojadata.util.gdalhelper import GDALHelper
-from mojadata.config import (
-    GDAL_MEMORY_LIMIT,
-    GDAL_WARP_OPTIONS,
-    GDAL_WARP_CREATION_OPTIONS,
-    GDAL_CREATION_OPTIONS
-)
+from mojadata import config as gdal_config
 from mojadata.layer.layer import Layer
 from mojadata import cleanup
 
@@ -117,12 +112,18 @@ class RasterLayer(Layer):
                   srcNodata="None",
                   xRes=requested_pixel_size or min_pixel_size,
                   yRes=requested_pixel_size or min_pixel_size,
-                  warpMemoryLimit=memory_limit or GDAL_MEMORY_LIMIT,
-                  options=GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+                  warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
+                  options=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
                   outputBounds=bounds)
 
-        gdal.Open(warp_path, gdal.GA_Update).GetRasterBand(1).SetNoDataValue(original_nodata)
+        if original_nodata is not None:
+            ds = gdal.Open(warp_path, gdal.GA_Update)
+            band = ds.GetRasterBand(1)
+            band.SetNoDataValue(original_nodata)
+            band.FlushCache()
+            band = None
+            ds = None
 
         output_path = os.path.join(tmp_dir, "{}.tif".format(self._name))
         is_float = "Float" in self.data_type
@@ -144,9 +145,9 @@ class RasterLayer(Layer):
                   xRes=pixel_size, yRes=pixel_size,
                   outputType=output_type,
                   dstNodata=self._nodata_value,
-                  warpMemoryLimit=memory_limit or GDAL_MEMORY_LIMIT,
-                  options=GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"])
+                  warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
+                  options=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"])
 
         self._drop_nulls(output_path)
 
@@ -166,7 +167,7 @@ class RasterLayer(Layer):
 
         tmp_path = os.path.join(os.path.dirname(path), f"{os.path.basename(path)}_drop_nulls.tiff")
         os.rename(path, tmp_path)
-        Calc(calc, path, self._nodata_value, creation_options=GDAL_CREATION_OPTIONS,
+        Calc(calc, path, self._nodata_value, creation_options=gdal_config.GDAL_CREATION_OPTIONS,
              A=tmp_path, overwrite=True, quiet=True)
 
         os.remove(tmp_path)

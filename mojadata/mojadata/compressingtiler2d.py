@@ -10,10 +10,7 @@ from mojadata.util import gdalconst
 from mojadata.util import gdal
 from mojadata.tiler import Tiler
 from mojadata.cleanup import cleanup
-from mojadata.config import (
-    GDAL_MEMORY_LIMIT,
-    PROCESS_MEMORY_LIMIT
-)
+from mojadata import config as gdal_config
 
 
 class CompressingTiler2D(Tiler):
@@ -111,7 +108,7 @@ class CompressingTiler2D(Tiler):
 
 def _pool_init(_bounding_box, _layers, _config):
     global bbox, layers, config
-    gdal.SetCacheMax(GDAL_MEMORY_LIMIT)
+    gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
     bbox = _bounding_box
     layers = _layers
     config = _config
@@ -150,7 +147,7 @@ def _tile_layer(layer_idx):
 
             ds = gdal.Open(layer.path, gdalconst.GA_ReadOnly)
             try:
-                buffer_memory_limit = min(PROCESS_MEMORY_LIMIT, 2**31 - 1)
+                buffer_memory_limit = min(gdal_config.PROCESS_MEMORY_LIMIT, 2**31 - 1)
                 for tile in layer.tiles(config["tile_extent"], config["block_extent"]):
                     messages.append((logging.INFO, "Processing tile: {}".format(tile.name)))
                     tile_out_path = os.path.join(

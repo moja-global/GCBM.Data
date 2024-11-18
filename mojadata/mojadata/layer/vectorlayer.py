@@ -3,15 +3,11 @@ from mojadata.util import ogr
 import uuid
 import logging
 import json
-
 from mojadata import cleanup
 from mojadata.util import gdal
 from mojadata.util.validationhelper import ValidationHelper
 from mojadata.util.gdalhelper import GDALHelper
-from mojadata.config import (
-    GDAL_RASTERIZE_CREATION_OPTIONS,
-    GDAL_RASTERIZE_OPTIONS
-)
+from mojadata import config as gdal_config
 from mojadata.layer.layer import Layer
 from mojadata.layer.attribute import Attribute
 from mojadata.layer.rasterlayer import RasterLayer
@@ -179,9 +175,9 @@ class VectorLayer(Layer):
             outputSRS=srs, outputBounds=bounds,
             attribute=self._id_attribute,
             noData=self._nodata_value,
-            creationOptions=GDAL_RASTERIZE_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+            creationOptions=gdal_config.GDAL_RASTERIZE_CREATION_OPTIONS + ["SPARSE_OK=YES"],
             targetAlignedPixels=True,
-            options=GDAL_RASTERIZE_OPTIONS.copy() \
+            options=gdal_config.GDAL_RASTERIZE_OPTIONS.copy() \
                 + ["-ot", GDALHelper.type_code_lookup.get(self._data_type) or "Float32"])
 
         return RasterLayer(tmp_raster_path, self.attributes, self._attribute_table,

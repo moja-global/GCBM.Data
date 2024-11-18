@@ -16,7 +16,7 @@ from mojadata.util.log import get_logger
 from mojadata.util import gdal
 from mojadata.tiler import Tiler
 from mojadata.cleanup import cleanup
-from mojadata.config import GDAL_MEMORY_LIMIT
+from mojadata import config as gdal_config
 
 class ArrowspaceTiler2D(Tiler):
     '''
@@ -93,7 +93,7 @@ class ArrowspaceTiler2D(Tiler):
 
 def _pool_init(_bounding_box, _layers):
     global bbox, layers
-    gdal.SetCacheMax(GDAL_MEMORY_LIMIT)
+    gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
     bbox = _bounding_box
     layers = _layers
 

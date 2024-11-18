@@ -6,12 +6,7 @@ from mojadata.util import gdal
 from mojadata.util.gdalhelper import GDALHelper
 from mojadata.util.rasterclipper import clip_raster
 from mojadata.util.rasterclipper import shrink_to_data
-from mojadata.config import (
-    TILER_MEMORY_LIMIT,
-    GDAL_MEMORY_LIMIT,
-    GDAL_WARP_OPTIONS,
-    GDAL_WARP_CREATION_OPTIONS
-)
+from mojadata import config as gdal_config
 from mojadata import cleanup
 
 
@@ -137,12 +132,12 @@ class BoundingBox(object):
         self._srs = bbox.GetProjection()
 
     def _process_bounding_box(self):
-        gdal.SetCacheMax(TILER_MEMORY_LIMIT)
+        gdal.SetCacheMax(gdal_config.TILER_MEMORY_LIMIT)
 
         dest_srs = osr.SpatialReference()
         dest_srs.ImportFromEPSG(self._epsg)
         self._layer, messages = self._layer.as_raster_layer(
-            dest_srs, self._pixel_size, 0.1, memory_limit=TILER_MEMORY_LIMIT)
+            dest_srs, self._pixel_size, 0.1, memory_limit=gdal_config.TILER_MEMORY_LIMIT)
 
         if not self._layer:
             raise RuntimeError("Error processing bounding box: {}".format(
@@ -160,10 +155,12 @@ class BoundingBox(object):
         # Go through the same warping process as the rest of the layers to
         # ensure the same raster dimensions; sometimes off by 1 without this.
         final_bbox_path = os.path.abspath("bounding_box{}".format(ext))
-        self._warp(self._layer.path, final_bbox_path, self._pixel_size, memory_limit=TILER_MEMORY_LIMIT)
+        self._warp(self._layer.path, final_bbox_path, self._pixel_size,
+                   memory_limit=gdal_config.TILER_MEMORY_LIMIT)
+
         self._layer.path = final_bbox_path
 
-        gdal.SetCacheMax(GDAL_MEMORY_LIMIT)
+        gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
 
     def _pad(self, in_path, out_path, pixel_size):
         info = GDALHelper.info(in_path)
@@ -175,9 +172,9 @@ class BoundingBox(object):
                                 math.ceil(bounds["lowerRight"][0]),
                                 math.ceil(bounds["upperLeft"][1])),
                   targetAlignedPixels=True,
-                  warpMemoryLimit=GDAL_MEMORY_LIMIT,
-                  options=GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=GDAL_WARP_CREATION_OPTIONS)
+                  warpMemoryLimit=gdal_config.GDAL_MEMORY_LIMIT,
+                  options=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS)
 
     def _warp(self, in_path, out_path, pixel_size, memory_limit=None):
         gdal.Warp(out_path, in_path,
@@ -188,6 +185,6 @@ class BoundingBox(object):
                                 self.info["cornerCoordinates"]["lowerRight"][0],
                                 self.info["cornerCoordinates"]["upperLeft"][1]),
                   targetAlignedPixels=True,
-                  warpMemoryLimit=memory_limit or GDAL_MEMORY_LIMIT,
-                  options=GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"])
+                  warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
+                  options=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"])

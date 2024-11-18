@@ -4,7 +4,7 @@ import numpy as np
 from mojadata.layer.rasterlayer import RasterLayer
 from mojadata.util import gdal
 from mojadata.util.gdalhelper import GDALHelper
-from mojadata.config import GDAL_CREATION_OPTIONS
+from mojadata import config as gdal_config
 from mojadata.layer.layer import Layer
 from mojadata import cleanup
 
@@ -89,7 +89,7 @@ class DummyLayer(Layer):
         driver = gdal.GetDriverByName("GTiff")
         dummy_raster = driver.Create(
             output_path, width_px, height_px, 1,
-            self._data_type, GDAL_CREATION_OPTIONS)
+            self._data_type, gdal_config.GDAL_CREATION_OPTIONS)
 
         dummy_raster.SetProjection(srs)
         dummy_raster.SetGeoTransform((ulx, pixel_size, 0, uly, 0, -pixel_size))

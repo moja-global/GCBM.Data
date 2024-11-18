@@ -11,8 +11,8 @@ from mojadata.util import gdal
 from mojadata.util.gdalhelper import GDALHelper
 from mojadata.tiler import Tiler
 from mojadata.util.log import get_logger
-from mojadata.config import *
 from mojadata.cleanup import cleanup
+from mojadata import config as gdal_config
 
 class CompressingTiler3D(Tiler):
     '''
@@ -116,7 +116,7 @@ class CompressingTiler3D(Tiler):
 
 def _pool_init(_bounding_box, _stack, _block_extent):
     global bbox, stack, block_extent
-    gdal.SetCacheMax(GDAL_MEMORY_LIMIT)
+    gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
     bbox = _bounding_box
     stack = _stack
     block_extent = _block_extent
@@ -143,7 +143,7 @@ def _process_layer(layer_idx):
     return messages, processed_layer
 
 def _write_tile(out_path, tile, raster_paths):
-    buffer_memory_limit = min(TILER_MEMORY_LIMIT, 2**31 - 1)
+    buffer_memory_limit = min(gdal_config.TILER_MEMORY_LIMIT, 2**31 - 1)
     rasters = [gdal.Open(path, gdalconst.GA_ReadOnly) for path in raster_paths]
     with open(out_path, "wb", buffering=buffer_memory_limit) as output_file:
         with ZipFile(output_file, "w", zipfile.ZIP_DEFLATED, True) as output_container:

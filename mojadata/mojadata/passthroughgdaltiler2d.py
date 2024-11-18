@@ -6,7 +6,7 @@ from mojadata.util.log import get_logger
 from future.utils import viewitems
 from mojadata.util import gdal
 from mojadata.tiler import Tiler
-from mojadata.config import GDAL_MEMORY_LIMIT
+from mojadata import config as gdal_config
 
 class PassthroughGdalTiler2D(Tiler):
     '''
@@ -90,7 +90,7 @@ class PassthroughGdalTiler2D(Tiler):
 
 def _pool_init(_layers, _config):
     global layers, config
-    gdal.SetCacheMax(GDAL_MEMORY_LIMIT)
+    gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
     layers = _layers
     config = _config
 
