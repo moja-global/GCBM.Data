@@ -136,9 +136,9 @@ class RasterLayer(Layer):
             self._nodata_value = GDALHelper.best_nodata_value(output_type)
 
         pixel_size = self._get_nearest_divisible_resolution(
-            min_pixel_size, requested_pixel_size, block_extent) if requested_pixel_size \
+            srs, min_pixel_size, requested_pixel_size, block_extent) if requested_pixel_size \
             else self._get_nearest_divisible_resolution(
-                min_pixel_size, RasterLayer.get_pixel_size(warp_path), block_extent)
+                srs, min_pixel_size, RasterLayer.get_pixel_size(warp_path), block_extent)
 
         gdal.Warp(output_path, warp_path,
                   targetAlignedPixels=True,
@@ -172,7 +172,10 @@ class RasterLayer(Layer):
 
         os.remove(tmp_path)
 
-    def _get_nearest_divisible_resolution(self, min_pixel_size, requested_pixel_size, block_extent):
+    def _get_nearest_divisible_resolution(self, srs, min_pixel_size, requested_pixel_size, block_extent):
+        if srs != 4326:
+            return requested_pixel_size
+
         nearest_block_divisible_size = \
             min_pixel_size * round(min_pixel_size / requested_pixel_size) \
             if requested_pixel_size > min_pixel_size \
