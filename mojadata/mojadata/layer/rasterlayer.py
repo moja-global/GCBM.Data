@@ -92,6 +92,23 @@ class RasterLayer(Layer):
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
                    data_type=None, bounds=None, preserve_temp_files=False, memory_limit=None,
                    **kwargs):
+        '''
+        About normalizing rasters:
+            - GDALWarp with "mode" resampling ignores nodata by default, i.e. a 95% nodata / 5% data
+              pixel -> data pixel in resampled layer.
+            - srcnodata="None" allows nodata to be considered, but then there can be more of the
+              single nodata value pixels than the count of any distinct data value making up the
+                resampled pixel, causing errors the other way: nodata pixels where there should be data.
+            - Solution is multi-step:
+                - Before resampling, create a mask layer:
+                    - Start with a copy of the layer being resampled.
+                    - Flatten all the non-nodata values to 1.
+                    - Do a mode resample with srcnodata="None" to come up with a simple majority
+                      data/nodata mask.
+                - Do a "mode" resample of the original layer using the defaults, i.e. let it exclude
+                  nodata from the calculation.
+                - Apply the data/nodata mask to remove any extra pixels that were actually majority nodata.
+        '''
         tmp_dir = "_".join((os.path.abspath(self._name), str(uuid.uuid1())[:4]))
 
         if not os.path.exists(tmp_dir):
@@ -104,12 +121,32 @@ class RasterLayer(Layer):
         if original_nodata is None and self._nodata_value is not None:
             original_nodata = self._nodata_value
 
+        nodata_mask_path = None
+        if original_nodata is not None:
+            flattened_path = os.path.join(tmp_dir, "flattened_{}.tif".format(self._name))
+            Calc("A != {}".format(original_nodata), flattened_path, original_nodata,
+                 creation_options=gdal_config.GDAL_CREATION_OPTIONS,
+                 A=self._path, overwrite=True, quiet=True)
+
+            nodata_mask_path = os.path.join(tmp_dir, "nodata_{}.tif".format(self._name))
+            gdal.Warp(nodata_mask_path, flattened_path,
+                      targetAlignedPixels=True,
+                      dstSRS=srs,
+                      resampleAlg="mode",
+                      srcNodata="None",
+                      xRes=requested_pixel_size or min_pixel_size,
+                      yRes=requested_pixel_size or min_pixel_size,
+                      warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
+                      options=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                      creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+                      outputBounds=bounds)
+
         warp_path = os.path.join(tmp_dir, "warp_{}.tif".format(self._name))
         gdal.Warp(warp_path, self._path,
                   targetAlignedPixels=True,
                   dstSRS=srs,
                   resampleAlg="mode",
-                  srcNodata="None",
+                  srcNodata=original_nodata,
                   xRes=requested_pixel_size or min_pixel_size,
                   yRes=requested_pixel_size or min_pixel_size,
                   warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
@@ -117,14 +154,14 @@ class RasterLayer(Layer):
                   creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
                   outputBounds=bounds)
 
-        if original_nodata is not None:
-            ds = gdal.Open(warp_path, gdal.GA_Update)
-            band = ds.GetRasterBand(1)
-            band.SetNoDataValue(original_nodata)
-            band.FlushCache()
-            band = None
-            ds = None
-
+        if nodata_mask_path:
+            masked_path = os.path.join(tmp_dir, "masked_{}.tif".format(self._name))
+            Calc("numpy.where(B == {0}, {0}, A)".format(original_nodata), masked_path,
+                 original_nodata, creation_options=gdal_config.GDAL_CREATION_OPTIONS,
+                 A=warp_path, B=nodata_mask_path, overwrite=True, quiet=True)
+            
+            warp_path = masked_path
+        
         output_path = os.path.join(tmp_dir, "{}.tif".format(self._name))
         is_float = "Float" in self.data_type
         output_type = data_type if data_type is not None \
