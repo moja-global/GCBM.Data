@@ -1,5 +1,6 @@
 ﻿import os
 import uuid
+import numpy as np
 from future.utils import viewitems
 from mojadata.util.gdal_calc import Calc
 from mojadata.util import gdalconst
@@ -93,12 +94,12 @@ class RasterLayer(Layer):
                    data_type=None, bounds=None, preserve_temp_files=False, memory_limit=None,
                    **kwargs):
         '''
-        About normalizing rasters:
+        About resampling rasters to a coarser resolution:
             - GDALWarp with "mode" resampling ignores nodata by default, i.e. a 95% nodata / 5% data
               pixel -> data pixel in resampled layer.
             - srcnodata="None" allows nodata to be considered, but then there can be more of the
               single nodata value pixels than the count of any distinct data value making up the
-                resampled pixel, causing errors the other way: nodata pixels where there should be data.
+              resampled pixel, causing errors the other way: nodata pixels where there should be data.
             - Solution is multi-step:
                 - Before resampling, create a mask layer:
                     - Start with a copy of the layer being resampled.
@@ -123,12 +124,12 @@ class RasterLayer(Layer):
 
         nodata_mask_path = None
         if original_nodata is not None:
-            flattened_path = os.path.join(tmp_dir, "flattened_{}.tif".format(self._name))
-            Calc("A != {}".format(original_nodata), flattened_path, original_nodata,
-                 creation_options=gdal_config.GDAL_CREATION_OPTIONS,
-                 A=self._path, overwrite=True, quiet=True)
+            flattened_path = "/vsimem/flattened_{}.tif".format(self._name)
+            GDALHelper.calc(
+                self._path, flattened_path, lambda d: d != original_nodata,
+                data_type=gdal.GDT_Byte, nodata_value=0)
 
-            nodata_mask_path = os.path.join(tmp_dir, "nodata_{}.tif".format(self._name))
+            nodata_mask_path = "/vsimem/nodata_{}.tif".format(self._name)
             gdal.Warp(nodata_mask_path, flattened_path,
                       targetAlignedPixels=True,
                       dstSRS=srs,
@@ -156,9 +157,11 @@ class RasterLayer(Layer):
 
         if nodata_mask_path:
             masked_path = os.path.join(tmp_dir, "masked_{}.tif".format(self._name))
-            Calc("numpy.where(B == {0}, {0}, A)".format(original_nodata), masked_path,
-                 original_nodata, creation_options=gdal_config.GDAL_CREATION_OPTIONS,
-                 A=warp_path, B=nodata_mask_path, overwrite=True, quiet=True)
+            GDALHelper.calc(
+                [warp_path, nodata_mask_path],
+                masked_path,
+                lambda d: np.where(d[1] == 0, original_nodata, d[0]),
+                nodata_value=original_nodata)
             
             warp_path = masked_path
         
@@ -197,16 +200,10 @@ class RasterLayer(Layer):
         if not self._attribute_table:
             return
 
-        calc = " + ".join((
-            f"isin(A, {list(self._attribute_table.keys())}) * A",
-            f"isin(A, {list(self._attribute_table.keys())}, invert=True) * {self._nodata_value}"
-        ))
-
         tmp_path = os.path.join(os.path.dirname(path), f"{os.path.basename(path)}_drop_nulls.tiff")
         os.rename(path, tmp_path)
-        Calc(calc, path, self._nodata_value, creation_options=gdal_config.GDAL_CREATION_OPTIONS,
-             A=tmp_path, overwrite=True, quiet=True)
-
+        keep_values = list(self._attribute_table.keys())
+        GDALHelper.calc(tmp_path, path, lambda d: np.where(np.isin(d, keep_values), d, self._nodata_value))
         os.remove(tmp_path)
 
     def _get_nearest_divisible_resolution(self, srs, min_pixel_size, requested_pixel_size, block_extent):
