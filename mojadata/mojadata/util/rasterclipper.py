@@ -1,10 +1,11 @@
 import os
 import uuid
+import numpy as np
 from mojadata import cleanup
 from mojadata.util import gdal
 from mojadata.util import ogr
 from mojadata.util import osr
-from mojadata.util.gdal_calc import Calc
+from mojadata.util.gdalhelper import GDALHelper
 from mojadata import config as gdal_config
 
 
@@ -14,14 +15,13 @@ def clip_raster(bounding_box_layer, target_layer, output_path):
     propagating the nodata pixels from the bounding box layer to the target
     layer.
     '''
-    calc = "A * (B != {0}) + ((B == {0}) * {1})".format(
-        bounding_box_layer.nodata_value, target_layer.nodata_value)
-
-    Calc(calc, output_path, target_layer.nodata_value,
-         creation_options=gdal_config.GDAL_CREATION_OPTIONS, overwrite=True,
-         type=target_layer.data_type, A=target_layer.path,
-         B=bounding_box_layer.path, quiet=True)
-
+    GDALHelper.calc(
+        [target_layer.path, bounding_box_layer.path],
+        output_path,
+        lambda d: np.where(
+            d[1] != bounding_box_layer.nodata_value,
+            d[0],
+            target_layer.nodata_value))
 
 def shrink_to_data(target_layer, output_path):
     '''

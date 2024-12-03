@@ -2,7 +2,6 @@
 import uuid
 import numpy as np
 from future.utils import viewitems
-from mojadata.util.gdal_calc import Calc
 from mojadata.util import gdalconst
 from mojadata.util import gdal
 from mojadata.util.validationhelper import ValidationHelper

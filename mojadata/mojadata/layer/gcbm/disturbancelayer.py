@@ -1,13 +1,14 @@
 ﻿import os
 import uuid
 import logging
+import numpy as np
 from future.utils import viewitems
 from mojadata import cleanup
 from mojadata.layer.layer import Layer
 from mojadata.layer.rasterlayer import RasterLayer
 from mojadata.layer.attribute import Attribute
 from mojadata import config as gdal_config
-from mojadata.util.gdal_calc import Calc
+from mojadata.util.gdalhelper import GDALHelper
 
 
 class DisturbanceLayer(Layer):
@@ -99,19 +100,9 @@ class DisturbanceLayer(Layer):
         if not raster:
             return None
 
-        if not self._layer.attributes:
+        uninterpreted_layer = not self._layer.attributes
+        if uninterpreted_layer:
             raster = self._flatten(raster)
-
-        # Handle the situation where a raster with no user-provided interpretation
-        # is used as a disturbance layer, in which case we use all non-nodata pixel
-        # values.
-        attribute_table = (
-            self.attribute_table if self._layer.attributes
-            else self._build_attribute_table(raster)
-        )
-        
-        if not attribute_table:
-            return None
 
         # Layer might also include some extra attributes that aren't part of the
         # core disturbance attributes, but make up some additional metadata used
@@ -127,7 +118,19 @@ class DisturbanceLayer(Layer):
             if isinstance(self._transition.classifiers, list):
                 disturbance_attributes.extend(self._transition.classifiers)
 
-        self._metadata_attributes = list(set(raster.attributes) - set(disturbance_attributes))
+        if not uninterpreted_layer:
+            self._metadata_attributes = list(set(raster.attributes) - set(disturbance_attributes))
+
+        # Handle the situation where a raster with no user-provided interpretation
+        # is used as a disturbance layer, in which case we use all non-nodata pixel
+        # values.
+        attribute_table = (
+            self.attribute_table if self._layer.attributes
+            else self._build_attribute_table(raster)
+        )
+        
+        if not attribute_table:
+            return None
 
         return RasterLayer(raster.path, self.attributes, attribute_table, tags=self.tags)
 
@@ -192,7 +195,6 @@ class DisturbanceLayer(Layer):
         cleanup.register_temp_dir(tmp_dir)
         nodata = layer.nodata_value
         output_path = os.path.join(tmp_dir, layer.name)
-        Calc("A != {}".format(nodata), output_path, nodata_value=nodata,
-             creation_options=gdal_config.GDAL_CREATION_OPTIONS, A=layer.path, quiet=True)
+        GDALHelper.calc(layer.path, output_path, lambda d: np.where(d != nodata, d, nodata))
 
         return RasterLayer(output_path, ["disturbed"], {1: [1]}, name=layer.name)
