@@ -33,9 +33,9 @@ def shrink_to_data(target_layer, output_path):
     cleanup.register_temp_dir(tmp_dir)
 
     calc_output_path = os.path.join(tmp_dir, "flattened_data.tif")
-    calc = f"1 * (A != {target_layer.nodata_value})"
-    Calc(calc, calc_output_path, 0, creation_options=gdal_config.GDAL_CREATION_OPTIONS,
-         type=gdal.GDT_Byte, A=target_layer.path, quiet=True)
+    GDALHelper.calc(
+        target_layer.path, calc_output_path, lambda d: d != target_layer.nodata_value,
+        data_type=gdal.GDT_Byte, nodata_value=0)
 
     src_ds = gdal.Open(target_layer.path)
     srs = osr.SpatialReference()
