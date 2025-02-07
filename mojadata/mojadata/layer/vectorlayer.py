@@ -1,9 +1,9 @@
 ﻿import os
-from mojadata.util import ogr
 import uuid
 import logging
 import json
 from mojadata import cleanup
+from mojadata.util import ogr
 from mojadata.util import gdal
 from mojadata.util.validationhelper import ValidationHelper
 from mojadata.util.gdalhelper import GDALHelper
@@ -52,7 +52,7 @@ class VectorLayer(Layer):
         ValidationHelper.require_path(path)
         attributes = [attributes] if isinstance(attributes, Attribute) else attributes
         self._name = name
-        self._data_type = data_type
+        self._data_type = gdal.GetDataTypeByName(data_type) if isinstance(data_type, str) else data_type
         self._nodata_value = nodata_value
         self._path = os.path.abspath(path) if not path.startswith("PG:") else path
         self._layer = layer

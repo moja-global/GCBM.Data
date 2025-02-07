@@ -1,6 +1,7 @@
 ﻿import os
 import logging
 import traceback
+from multiprocessing import cpu_count
 from mojadata.util.log import get_logger
 from future.utils import viewitems
 from mojadata.util import gdal
@@ -43,7 +44,7 @@ class GdalTiler2D(Tiler):
         self._compact_attribute_table = compact_attribute_table
 
     def tile(self, layers, output_path="."):
-        if gdal_config.PROCESS_POOL_SIZE > len(layers):
+        if cpu_count() > len(layers):
             gdal_config.refresh(len(layers))
         
         self._skipped_layers = []
@@ -109,7 +110,7 @@ def _pool_init(_bounding_box, _layers, _config):
     config = _config
 
 def _tile_layer(layer_idx):
-    if gdal_config.PROCESS_POOL_SIZE > len(layers):
+    if gdal_config.cpu_count() > len(layers):
         gdal_config.refresh(len(layers))
 
     gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)

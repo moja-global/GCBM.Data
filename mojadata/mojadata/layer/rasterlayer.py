@@ -49,7 +49,7 @@ class RasterLayer(Layer):
         self._path = os.path.abspath(path)
         self._attributes = attributes or []
         self._nodata_value = nodata_value
-        self._data_type = data_type
+        self._data_type = gdal.GetDataTypeByName(data_type) if isinstance(data_type, str) else data_type
         self._date = date
         self._tags = tags or []
         self._allow_nulls = allow_nulls
