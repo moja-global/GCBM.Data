@@ -4,6 +4,7 @@ import logging
 import numpy as np
 from future.utils import viewitems
 from mojadata import cleanup
+from mojadata.layer.gcbm.transitionrule import TransitionRule
 from mojadata.layer.layer import Layer
 from mojadata.layer.rasterlayer import RasterLayer
 from mojadata.layer.attribute import Attribute
@@ -38,24 +39,33 @@ class DisturbanceLayer(Layer):
             ["<variable name>", "<comparison>", <target>], i.e.:
             ["age", ">=", 40]
     :type conditions: list of 3-element lists
+    :param survivor_transition: [optional, CBM4 only] the transition rule definition
+        for the disturbance layer for the portion of the stand unaffected by the
+        disturbance - no transition/model default if unspecified
+    :type transition: :class:`.TransitionRule`
     '''
 
     def __init__(self, transition_rule_manager, lyr, year, disturbance_type,
-                 transition=None, tags=None, conditions=None):
+                 transition=None, tags=None, conditions=None, survivor_transition=None,
+                 proportion=None):
         super(self.__class__, self).__init__()
         self._transition_rule_manager = transition_rule_manager
         self._layer = lyr
         self._year = year
         self._disturbance_type = disturbance_type
         self._transition = transition
+        self._survivor_transition = survivor_transition
+        self._proportion = proportion
         self._tags = ["disturbance"] + (tags or [])
         self._metadata_attributes = []
         self._conditions = conditions
         self._attributes = ["year", "disturbance_type"]
-
+        if proportion:
+            self._attributes.append("proportion")
         if transition:
             self._attributes.append("transition")
-
+        if survivor_transition:
+            self._attributes.append("survivor_transition")
         if conditions:
             self._attributes.append("conditions")
 
@@ -107,16 +117,21 @@ class DisturbanceLayer(Layer):
         # Layer might also include some extra attributes that aren't part of the
         # core disturbance attributes, but make up some additional metadata used
         # by specific modules.
-        disturbance_attributes = [attr.db_name for attr in (
-            self._year, self._disturbance_type) if isinstance(attr, Attribute)]
+        disturbance_attributes = [
+            attr.db_name for attr in (self._year, self._disturbance_type, self._proportion)
+            if isinstance(attr, Attribute)
+        ]
 
-        if self._transition:
+        for transition in (self._transition, self._survivor_transition):
+            if not transition:
+                continue
+
             disturbance_attributes.extend([attr.db_name for attr in (
-                self._transition.regen_delay, self._transition.age_after)
+                transition.regen_delay, transition.age_after)
                 if isinstance(attr, Attribute)])
 
-            if isinstance(self._transition.classifiers, list):
-                disturbance_attributes.extend(self._transition.classifiers)
+            if isinstance(transition.classifiers, list):
+                disturbance_attributes.extend(transition.classifiers)
 
         if not uninterpreted_layer:
             self._metadata_attributes = list(set(raster.attributes) - set(disturbance_attributes))
@@ -136,7 +151,6 @@ class DisturbanceLayer(Layer):
 
     def _build_attribute_table(self, layer):
         attr_table = {}
-
         for pixel_value, attr_values in viewitems(layer.attribute_table):
             attr_values = dict(zip(layer.attributes, attr_values))
 
@@ -151,31 +165,26 @@ class DisturbanceLayer(Layer):
 
                     return {}
 
-            transition_id = None
-            if self._transition:
-                regen_delay = attr_values.get(self._transition.regen_delay.db_name) \
-                    if isinstance(self._transition.regen_delay, Attribute) \
-                    else self._transition.regen_delay
-
-                age_after = attr_values.get(self._transition.age_after.db_name) \
-                    if isinstance(self._transition.age_after, Attribute) \
-                    else self._transition.age_after
-
-                transition_values = {c: attr_values.get(c) for c in self._transition.classifiers} \
-                    if isinstance(self._transition.classifiers, list) \
-                    else self._transition.classifiers
-
-                transition_id = self._transition_rule_manager.get_or_add(
-                    regen_delay, age_after, transition_values)
-
             values = [
                 int(float(attr_values.get(self._year.db_name)))
                 if isinstance(self._year, Attribute) else int(float(self._year)),
                 attr_values.get(self._disturbance_type.db_name)
-                if isinstance(self._disturbance_type, Attribute) else self._disturbance_type]
+                if isinstance(self._disturbance_type, Attribute) else self._disturbance_type
+            ]
 
-            if transition_id:
-                values.append(transition_id)
+            if self._proportion is not None:
+                values.append(
+                    float(attr_values.get(self._proportion.db_name))
+                    if isinstance(self._proportion, Attribute)
+                    else float(self._proportion))
+
+            for transition_type, transition in (
+                (TransitionRule.mortality, self._transition),
+                (TransitionRule.survivor, self._survivor_transition)
+            ):
+                if transition:
+                    transition_id = self._record_transition(transition_type, transition, attr_values)
+                    values.append(transition_id)
 
             if self._conditions:
                 values.append(self._conditions)
@@ -186,6 +195,24 @@ class DisturbanceLayer(Layer):
             attr_table[pixel_value] = values
 
         return attr_table
+
+    def _record_transition(self, transition_type, transition, attr_values):
+        regen_delay = attr_values.get(transition.regen_delay.db_name) \
+            if isinstance(transition.regen_delay, Attribute) \
+            else transition.regen_delay
+
+        age_after = attr_values.get(transition.age_after.db_name) \
+            if isinstance(transition.age_after, Attribute) \
+            else transition.age_after
+
+        transition_values = {c: attr_values.get(c) for c in self._transition.classifiers} \
+            if isinstance(transition.classifiers, list) \
+            else transition.classifiers
+
+        transition_id = self._transition_rule_manager.get_or_add(
+            transition_type, regen_delay, age_after, transition_values)
+
+        return transition_id
 
     def _flatten(self, layer):
         tmp_dir = "_".join((os.path.abspath(layer.name), str(uuid.uuid1())[:4]))

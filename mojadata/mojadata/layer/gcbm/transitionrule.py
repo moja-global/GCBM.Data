@@ -19,6 +19,9 @@ class TransitionRule(object):
     :type classifiers: list of str, or dict
     '''
 
+    survivor = "survivor"
+    mortality = "mortality"
+
     def __init__(self, regen_delay=0, age_after=-1, classifiers=None):
         self._regen_delay = regen_delay
         self._age_after = age_after

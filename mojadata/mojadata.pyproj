@@ -5,18 +5,17 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>adfa27bd-c8aa-4b84-aeb7-5766e169c094</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>C:\Projects\GCBM software and training components\1_Standalone_Template\tools\Tiler\tiler.py</StartupFile>
+    <StartupFile>C:\Python310\Scripts\walltowall.exe</StartupFile>
     <SearchPath>
     </SearchPath>
-    <WorkingDirectory>C:\Projects\GCBM software and training components\1_Standalone_Template\layers\tiled</WorkingDirectory>
+    <WorkingDirectory>D:\Projects\43_SCANFI_GCBM\provinces\ab</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>mojadata</Name>
     <RootNamespace>mojadata</RootNamespace>
     <InterpreterId>Global|PythonCore|3.10</InterpreterId>
     <IsWindowsApplication>False</IsWindowsApplication>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>
-    </CommandLineArguments>
+    <CommandLineArguments>prepare config\scanfi_alberta.json .</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
     <InterpreterPath>
     </InterpreterPath>

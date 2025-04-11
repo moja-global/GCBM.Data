@@ -4,6 +4,7 @@ import sys
 from future.utils import viewitems
 from multiprocessing import RLock
 from multiprocessing.managers import BaseManager
+from mojadata.layer.gcbm.transitionrule import TransitionRule
 
 
 class _TransitionRuleManager(object):
@@ -65,9 +66,11 @@ class _TransitionRuleManager(object):
     def __init__(self):
         self._lock = RLock()
         self._transition_rules = {}
+        self._survivor_transition_rules = {}
         self._next_id = 1
+        self._next_survivor_id = 1
 
-    def get_or_add(self, regen_delay, age_after, classifier_values=None):
+    def get_or_add(self, transition_type, regen_delay, age_after, classifier_values=None):
         '''
         Gets the unique ID for a set of transition rule values, adding it to
         the collection of accumulated rules if necessary.
@@ -83,44 +86,62 @@ class _TransitionRuleManager(object):
         :returns: the unique ID for the transition rule
         '''
         unique_rule = _TransitionRuleManager.RuleInstance(regen_delay, age_after, classifier_values)
-        id = self._transition_rules.get(unique_rule)
-        if not id:
-            with self._lock:
-                id = self._transition_rules.get(unique_rule)
-                if not id:
-                    id = self._next_id
-                    self._transition_rules[unique_rule] = self._next_id
-                    self._next_id += 1
+        if transition_type == TransitionRule.mortality:
+            id = self._transition_rules.get(unique_rule)
+            if not id:
+                with self._lock:
+                    id = self._transition_rules.get(unique_rule)
+                    if not id:
+                        id = self._next_id
+                        self._transition_rules[unique_rule] = self._next_id
+                        self._next_id += 1
+        elif transition_type == TransitionRule.survivor:
+            id = self._survivor_transition_rules.get(unique_rule)
+            if not id:
+                with self._lock:
+                    id = self._survivor_transition_rules.get(unique_rule)
+                    if not id:
+                        id = self._next_survivor_id
+                        self._survivor_transition_rules[unique_rule] = self._next_survivor_id
+                        self._next_survivor_id += 1
+
         return id
 
     def write_rules(self, output_path="transition_rules.csv"):
         '''
         Writes the unique transition rules to the rule manager's output path.
         '''
-        if not self._transition_rules:
-            return
+        for transitions, prefix in (
+            (self._transition_rules, ""),
+            (self._survivor_transition_rules, "survivor")
+        ):
+            if not transitions:
+                return
 
-        rules_dir = os.path.dirname(os.path.abspath(output_path))
-        if not os.path.exists(rules_dir):
-            os.makedirs(rules_dir)
+            rules_dir = os.path.dirname(os.path.abspath(output_path))
+            if not os.path.exists(rules_dir):
+                os.makedirs(rules_dir)
 
-        with self._open_csv(output_path) as out_file:
-            header = ["id", "regen_delay", "age_after"]
-            header.extend(self._find_classifier_names())
-            writer = csv.DictWriter(out_file, header)
-            writer.writeheader()
-            for rule, id in sorted(viewitems(self._transition_rules), key=lambda item: item[1]):
-                rule_data = {"id": id, "regen_delay": rule.regen_delay, "age_after": rule.age_after}
-                rule_data.update(rule.classifier_set)
-                writer.writerow(rule_data)
+            if prefix:
+                output_path = os.path.join(rules_dir, "_".join((prefix, os.path.basename(output_path))))
+
+            with self._open_csv(output_path) as out_file:
+                header = ["id", "regen_delay", "age_after"]
+                header.extend(self._find_classifier_names(transitions))
+                writer = csv.DictWriter(out_file, header)
+                writer.writeheader()
+                for rule, id in sorted(viewitems(transitions), key=lambda item: item[1]):
+                    rule_data = {"id": id, "regen_delay": rule.regen_delay, "age_after": rule.age_after}
+                    rule_data.update(rule.classifier_set)
+                    writer.writerow(rule_data)
 
     def _open_csv(self, path):
         return open(path, "wb") if sys.version_info[0] == 2 \
             else open(path, "w", newline="", encoding="utf-8", errors="surrogateescape")
 
-    def _find_classifier_names(self):
+    def _find_classifier_names(self, transitions):
         classifier_names = set()
-        for rule in self._transition_rules:
+        for rule in transitions:
             for name in rule.classifier_names:
                 classifier_names.add(name)
 

@@ -15,7 +15,7 @@ if path.exists(long_description_file):
 
 setup(
     name="mojadata",
-    version="4.3.4",
+    version="4.3.5",
     description="Mojadata Tiler",
     long_description=long_description,
     url="https://github.com/SLEEK-TOOLS/moja.data",
@@ -32,8 +32,8 @@ setup(
     keywords="moja.global",
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=[
-        "gdal==3.4.3", "gdal_utils==3.4.3",
-        "numpy", "simplejson", "future", "psutil", "six", "ftfy"
+        "gdal", "gdal_utils", "numpy", "simplejson", "future", "psutil",
+        "six", "ftfy"
     ],
     extras_require={},
     package_data={},
