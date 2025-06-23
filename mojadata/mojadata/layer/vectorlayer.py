@@ -44,10 +44,14 @@ class VectorLayer(Layer):
     :type tags: list of str
     :param allow_nulls: [optional] allow null values in the attribute table
     :type allow_nulls: bool
+    :param all_touched: [optional] if True, even if a pixel is majority nodata,
+        pick the majority non-nodata value; default False
+    :type all_touched: bool
     '''
 
     def __init__(self, name, path, attributes, raw=False, nodata_value=None,
-                 data_type=None, layer=None, date=None, tags=None, allow_nulls=False):
+                 data_type=None, layer=None, date=None, tags=None, allow_nulls=False,
+                 all_touched=False):
         super(self.__class__, self).__init__()
         ValidationHelper.require_path(path)
         attributes = [attributes] if isinstance(attributes, Attribute) else attributes
@@ -63,6 +67,7 @@ class VectorLayer(Layer):
         self._tags = tags or []
         self._allow_nulls = allow_nulls
         self._attributes = attributes
+        self._all_touched = all_touched
 
     @property
     def name(self):
@@ -177,6 +182,7 @@ class VectorLayer(Layer):
             noData=self._nodata_value,
             creationOptions=gdal_config.GDAL_RASTERIZE_CREATION_OPTIONS + ["SPARSE_OK=YES"],
             targetAlignedPixels=True,
+            allTouched=self._all_touched,
             options=gdal_config.GDAL_RASTERIZE_OPTIONS.copy() \
                 + ["-ot", GDALHelper.type_code_lookup.get(self._data_type) or "Float32"])
 

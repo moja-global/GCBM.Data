@@ -38,11 +38,14 @@ class RasterLayer(Layer):
     :type name: str
     :param allow_nulls: [optional] allow null values in the attribute table
     :type allow_nulls: bool
+    :param all_touched: [optional] if True, even if a pixel is majority nodata,
+        pick the majority non-nodata value; default False
+    :type all_touched: bool
     '''
 
     def __init__(self, path, attributes=None, attribute_table=None,
                  nodata_value=None, data_type=None, date=None, tags=None,
-                 name=None, allow_nulls=False):
+                 name=None, allow_nulls=False, all_touched=False):
         super(self.__class__, self).__init__()
         ValidationHelper.require_path(path)
         self._name = name or os.path.splitext(os.path.basename(path))[0]
@@ -53,6 +56,7 @@ class RasterLayer(Layer):
         self._date = date
         self._tags = tags or []
         self._allow_nulls = allow_nulls
+        self._all_touched = all_touched
         self._attribute_table = (attribute_table or {}) if allow_nulls else {
             k: v for k, v in viewitems(attribute_table)
             if ValidationHelper.no_empty_values(v)
@@ -122,7 +126,7 @@ class RasterLayer(Layer):
             original_nodata = self._nodata_value
 
         nodata_mask_path = None
-        if original_nodata is not None:
+        if original_nodata is not None and not self._all_touched:
             flattened_path = "/vsimem/flattened_{}.tif".format(self._name)
             GDALHelper.calc(
                 self._path, flattened_path, lambda d: d != original_nodata,
