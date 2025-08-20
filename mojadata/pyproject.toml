@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mojadata"
+version = "4.3.6"
+requires-python = ">= 3.9"
+dependencies = [
+    "gdal", "gdal_utils", "numpy", "simplejson", "future", "psutil",
+    "six", "ftfy"
+]
+
