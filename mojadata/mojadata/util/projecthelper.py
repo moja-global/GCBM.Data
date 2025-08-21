@@ -39,7 +39,7 @@ def align_study_areas(*study_areas, output_path):
             output_layer_file = os.path.join(study_area_output_path, os.path.basename(input_layer_file))
             gdal.Warp(output_layer_file, input_layer_file, outputBounds=max_extent,
                       xRes=study_area_data["pixel_size"], yRes=study_area_data["pixel_size"],
-                      options=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                      warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
                       creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS)
         
         any_new_layer = RasterLayer(glob(os.path.join(study_area_output_path, "*.tif*"))[0])

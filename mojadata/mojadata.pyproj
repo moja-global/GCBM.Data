@@ -86,7 +86,6 @@
     <Compile Include="mojadata\util\__init__.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="setup.py" />
     <Compile Include="mojadata\block.py">
       <SubType>Code</SubType>
     </Compile>
@@ -116,6 +115,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="build_wheel.bat" />
+    <Content Include="pyproject.toml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="mojadata\" />

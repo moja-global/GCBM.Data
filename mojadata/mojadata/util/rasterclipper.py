@@ -53,5 +53,5 @@ def shrink_to_data(target_layer, output_path):
 
     gdal.Translate(output_path, src_ds,
                    projWin=[min_x, max_y, max_x, min_y],
-                   options=gdal_config.GDAL_TRANSLATE_OPTIONS.copy(),
+                   warpOptions=gdal_config.GDAL_TRANSLATE_OPTIONS.copy(),
                    creationOptions=gdal_config.GDAL_TRANSLATE_CREATION_OPTIONS)
