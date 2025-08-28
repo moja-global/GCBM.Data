@@ -114,10 +114,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="build_wheel.bat" />
-    <Content Include="pyproject.toml" />
-  </ItemGroup>
-  <ItemGroup>
     <Folder Include="mojadata\" />
     <Folder Include="mojadata\layer\" />
     <Folder Include="mojadata\layer\gcbm\" />
