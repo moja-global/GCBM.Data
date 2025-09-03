@@ -1,5 +1,6 @@
 import logging
 import simplejson as json
+import multiprocessing as mp
 from ftfy import guess_bytes
 from collections import OrderedDict
 from multiprocessing import Pool
@@ -12,10 +13,10 @@ class Tiler(object):
     by the Flint platform.
     '''
 
-    def __init__(self, workers=None):
+    def __init__(self, workers=None, total_mem_bytes=None):
         self._workers = workers
-        if workers:
-            config.refresh(workers)
+        self._total_mem_bytes = total_mem_bytes
+        config.refresh(workers, total_mem_bytes)
 
     def tile(self, items):
         '''
@@ -45,6 +46,7 @@ class Tiler(object):
         return study_area_info
 
     def _create_pool(self, initializer=None, init_args=None):
+        mp.set_start_method("spawn", force=True)
         workers = self._workers or config.PROCESS_POOL_SIZE
         logging.info("Creating pool with {} workers.".format(workers))
         return Pool(workers, initializer, init_args)

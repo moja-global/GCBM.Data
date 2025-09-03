@@ -27,7 +27,7 @@ GDAL_RASTERIZE_CREATION_OPTIONS = GDAL_CREATION_OPTIONS
 DEBUG = "OFF"
 
 
-def refresh(pool_size):
+def refresh(pool_size=None, total_mem_bytes=None):
     '''
     Refresh all the pool and memory limits for the given pool size. Sometimes
     when using mojadata from another package, multiprocessing.cpu_count()
@@ -54,9 +54,12 @@ def refresh(pool_size):
     global GDAL_TRANSLATE_CREATION_OPTIONS
     global GDAL_RASTERIZE_CREATION_OPTIONS
 
+    if pool_size is None:
+        pool_size = cpu_count()
+
     GDAL_THREADS = min(pool_size, 4)
     PROCESS_POOL_SIZE = pool_size
-    TILER_MEMORY_LIMIT = int(psutil.virtual_memory().available * 0.75)
+    TILER_MEMORY_LIMIT = int(total_mem_bytes or (psutil.virtual_memory().available * 0.75))
     PROCESS_MEMORY_LIMIT = int(TILER_MEMORY_LIMIT / PROCESS_POOL_SIZE)
     GDAL_MEMORY_LIMIT = int(PROCESS_MEMORY_LIMIT / GDAL_THREADS)
     GDAL_OPTIONS = []

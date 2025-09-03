@@ -1,7 +1,6 @@
 ﻿import os
 import logging
 import traceback
-from multiprocessing import cpu_count
 from mojadata.util.log import get_logger
 from future.utils import viewitems
 from mojadata.util import gdal
@@ -44,8 +43,9 @@ class GdalTiler2D(Tiler):
         self._compact_attribute_table = compact_attribute_table
 
     def tile(self, layers, output_path="."):
-        if cpu_count() > len(layers):
-            gdal_config.refresh(len(layers))
+        workers = self._workers or gdal_config.PROCESS_POOL_SIZE
+        if workers > len(layers):
+            gdal_config.refresh(len(layers), self._total_mem_bytes)
         
         self._skipped_layers = []
         working_path = os.path.abspath(os.curdir)
@@ -65,7 +65,9 @@ class GdalTiler2D(Tiler):
                 self._log.info("Processing layers...")
                 pool = self._create_pool(_pool_init, (self._bounding_box, layers, layer_config))
                 for i in range(len(layers)):
-                    pool.apply_async(_tile_layer, (i,), callback=self._handle_tile_layer_result)
+                    pool.apply_async(
+                        _tile_layer, (i, self._total_mem_bytes),
+                        callback=self._handle_tile_layer_result)
 
                 pool.close()
                 pool.join()
@@ -109,9 +111,11 @@ def _pool_init(_bounding_box, _layers, _config):
     layers = _layers
     config = _config
 
-def _tile_layer(layer_idx):
-    if gdal_config.cpu_count() > len(layers):
-        gdal_config.refresh(len(layers))
+def _tile_layer(layer_idx, workers=None, gdal_memory_limit=None):
+    workers = workers or gdal_config.PROCESS_POOL_SIZE
+    gdal_memory_limit = gdal_memory_limit or gdal_config.GDAL_MEMORY_LIMIT
+    if workers > len(layers):
+        gdal_config.refresh(len(layers), gdal_memory_limit)
 
     gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
 
