@@ -65,8 +65,8 @@ class _TransitionRuleManager(object):
 
     def __init__(self):
         self._lock = RLock()
-        self._transition_rules = {}
-        self._transition_rules_undisturbed = {}
+        self._transition_disturbed = {}
+        self._transition_undisturbed = {}
         self._next_id = 1
         self._next_undisturbed_id = 1
 
@@ -87,22 +87,22 @@ class _TransitionRuleManager(object):
         '''
         unique_rule = _TransitionRuleManager.RuleInstance(regen_delay, age_after, classifier_values)
         if transition_type == TransitionRule.disturbed:
-            id = self._transition_rules.get(unique_rule)
+            id = self._transition_disturbed.get(unique_rule)
             if not id:
                 with self._lock:
-                    id = self._transition_rules.get(unique_rule)
+                    id = self._transition_disturbed.get(unique_rule)
                     if not id:
                         id = self._next_id
-                        self._transition_rules[unique_rule] = self._next_id
+                        self._transition_disturbed[unique_rule] = self._next_id
                         self._next_id += 1
         elif transition_type == TransitionRule.undisturbed:
-            id = self._transition_rules_undisturbed.get(unique_rule)
+            id = self._transition_undisturbed.get(unique_rule)
             if not id:
                 with self._lock:
-                    id = self._transition_rules_undisturbed.get(unique_rule)
+                    id = self._transition_undisturbed.get(unique_rule)
                     if not id:
                         id = self._next_undisturbed_id
-                        self._transition_rules_undisturbed[unique_rule] = self._next_undisturbed_id
+                        self._transition_undisturbed[unique_rule] = self._next_undisturbed_id
                         self._next_undisturbed_id += 1
 
         return id
@@ -112,8 +112,8 @@ class _TransitionRuleManager(object):
         Writes the unique transition rules to the rule manager's output path.
         '''
         for transitions, prefix in (
-            (self._transition_rules, ""),
-            (self._transition_rules_undisturbed, "undisturbed")
+            (self._transition_disturbed, ""),
+            (self._transition_undisturbed, "undisturbed")
         ):
             if not transitions:
                 return
