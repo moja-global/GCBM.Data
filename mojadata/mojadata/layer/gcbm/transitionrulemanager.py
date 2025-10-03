@@ -66,9 +66,9 @@ class _TransitionRuleManager(object):
     def __init__(self):
         self._lock = RLock()
         self._transition_rules = {}
-        self._survivor_transition_rules = {}
+        self._transition_rules_undisturbed = {}
         self._next_id = 1
-        self._next_survivor_id = 1
+        self._next_undisturbed_id = 1
 
     def get_or_add(self, transition_type, regen_delay, age_after, classifier_values=None):
         '''
@@ -86,7 +86,7 @@ class _TransitionRuleManager(object):
         :returns: the unique ID for the transition rule
         '''
         unique_rule = _TransitionRuleManager.RuleInstance(regen_delay, age_after, classifier_values)
-        if transition_type == TransitionRule.mortality:
+        if transition_type == TransitionRule.disturbed:
             id = self._transition_rules.get(unique_rule)
             if not id:
                 with self._lock:
@@ -95,15 +95,15 @@ class _TransitionRuleManager(object):
                         id = self._next_id
                         self._transition_rules[unique_rule] = self._next_id
                         self._next_id += 1
-        elif transition_type == TransitionRule.survivor:
-            id = self._survivor_transition_rules.get(unique_rule)
+        elif transition_type == TransitionRule.undisturbed:
+            id = self._transition_rules_undisturbed.get(unique_rule)
             if not id:
                 with self._lock:
-                    id = self._survivor_transition_rules.get(unique_rule)
+                    id = self._transition_rules_undisturbed.get(unique_rule)
                     if not id:
-                        id = self._next_survivor_id
-                        self._survivor_transition_rules[unique_rule] = self._next_survivor_id
-                        self._next_survivor_id += 1
+                        id = self._next_undisturbed_id
+                        self._transition_rules_undisturbed[unique_rule] = self._next_undisturbed_id
+                        self._next_undisturbed_id += 1
 
         return id
 
@@ -113,7 +113,7 @@ class _TransitionRuleManager(object):
         '''
         for transitions, prefix in (
             (self._transition_rules, ""),
-            (self._survivor_transition_rules, "survivor")
+            (self._transition_rules_undisturbed, "undisturbed")
         ):
             if not transitions:
                 return
