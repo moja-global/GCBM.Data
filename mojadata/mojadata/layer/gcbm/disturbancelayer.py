@@ -39,14 +39,14 @@ class DisturbanceLayer(Layer):
             ["<variable name>", "<comparison>", <target>], i.e.:
             ["age", ">=", 40]
     :type conditions: list of 3-element lists
-    :param survivor_transition: [optional, CBM4 only] the transition rule definition
+    :param transition_undisturbed: [optional, CBM4 only] the transition rule definition
         for the disturbance layer for the portion of the stand unaffected by the
         disturbance - no transition/model default if unspecified
     :type transition: :class:`.TransitionRule`
     '''
 
     def __init__(self, transition_rule_manager, lyr, year, disturbance_type,
-                 transition=None, tags=None, conditions=None, survivor_transition=None,
+                 transition=None, tags=None, conditions=None, transition_undisturbed=None,
                  proportion=None):
         super(self.__class__, self).__init__()
         self._transition_rule_manager = transition_rule_manager
@@ -54,7 +54,7 @@ class DisturbanceLayer(Layer):
         self._year = year
         self._disturbance_type = disturbance_type
         self._transition = transition
-        self._survivor_transition = survivor_transition
+        self._transition_undisturbed = transition_undisturbed
         self._proportion = proportion
         self._tags = ["disturbance"] + (tags or [])
         self._metadata_attributes = []
@@ -64,8 +64,8 @@ class DisturbanceLayer(Layer):
             self._attributes.append("proportion")
         if transition:
             self._attributes.append("transition")
-        if survivor_transition:
-            self._attributes.append("survivor_transition")
+        if transition_undisturbed:
+            self._attributes.append("transition_undisturbed")
         if conditions:
             self._attributes.append("conditions")
 
@@ -122,7 +122,7 @@ class DisturbanceLayer(Layer):
             if isinstance(attr, Attribute)
         ]
 
-        for transition in (self._transition, self._survivor_transition):
+        for transition in (self._transition, self._transition_undisturbed):
             if not transition:
                 continue
 
@@ -179,8 +179,8 @@ class DisturbanceLayer(Layer):
                     else float(self._proportion))
 
             for transition_type, transition in (
-                (TransitionRule.mortality, self._transition),
-                (TransitionRule.survivor, self._survivor_transition)
+                (TransitionRule.disturbed, self._transition),
+                (TransitionRule.undisturbed, self._transition_undisturbed)
             ):
                 if transition:
                     transition_id = self._record_transition(transition_type, transition, attr_values)
