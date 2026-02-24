@@ -222,6 +222,6 @@ class DisturbanceLayer(Layer):
         cleanup.register_temp_dir(tmp_dir)
         nodata = layer.nodata_value
         output_path = os.path.join(tmp_dir, layer.name)
-        GDALHelper.calc(layer.path, output_path, lambda d: np.where(d != nodata, d, nodata))
+        GDALHelper.calc(layer.path, output_path, lambda d: np.where(d != nodata, 1, nodata))
 
         return RasterLayer(output_path, ["disturbed"], {1: [1]}, name=layer.name)
