@@ -2,6 +2,7 @@
 import uuid
 import logging
 import json
+import pandas as pd
 from mojadata import cleanup
 from mojadata.util import ogr
 from mojadata.util import gdal
@@ -47,11 +48,16 @@ class VectorLayer(Layer):
     :param all_touched: [optional] if True, even if a pixel is majority nodata,
         pick the majority non-nodata value; default False
     :type all_touched: bool
+    :param extended_attributes: [optional] a table of extended attributes to
+        inner join to the attributes in the vector layer. The columns that are
+        common to both the extended attribute table and the vector layer are
+        used as the join key
+    :type extended_attributes: :class:`pandas.DataFrame`
     '''
 
     def __init__(self, name, path, attributes, raw=False, nodata_value=None,
                  data_type=None, layer=None, date=None, tags=None, allow_nulls=False,
-                 all_touched=False):
+                 all_touched=False, extended_attributes=None):
         super(self.__class__, self).__init__()
         ValidationHelper.require_path(path)
         attributes = [attributes] if isinstance(attributes, Attribute) else attributes
@@ -68,6 +74,7 @@ class VectorLayer(Layer):
         self._allow_nulls = allow_nulls
         self._attributes = attributes
         self._all_touched = all_touched
+        self._extended_attributes = extended_attributes
 
     @property
     def name(self):
@@ -126,7 +133,18 @@ class VectorLayer(Layer):
                 + [str(coord) for coord in bounds]
 
         if self._attributes:
-            reproj_opts += ["-select", ",".join((attr.name for attr in self._attributes))]
+            layer_attributes = self._get_attribute_names(initial_reproj_path)
+            selected_attributes = [
+                attr.name for attr in self._attributes if attr.name.lower() in layer_attributes
+            ]
+            
+            if self._extended_attributes is not None:
+                selected_attributes.extend([
+                    attr for attr in self._extended_attributes.columns
+                    if attr.lower() in layer_attributes
+                ])
+            
+            reproj_opts += ["-select", ",".join(selected_attributes)]
 
         reproj_path = os.path.join(tmp_dir, self._make_name(".db"))
         gdal.VectorTranslate(reproj_path, initial_reproj_path, format="SQLite", options=reproj_opts)
@@ -297,31 +315,59 @@ class VectorLayer(Layer):
             for feature_id in feature_ids:
                 feature = layer.GetFeature(feature_id)
                 try:
-                    attribute_values = []
-                    for attr in self._attributes:
+                    attribute_values = [None] * len(self._attributes)
+                    layer_attribute_values = []
+                    for i, attr in enumerate(self._attributes):
                         # Try to get the attribute from the feature as-is,
                         # then retry as plain ASCII in case it's a unicode
                         # mismatch issue.
                         for attr_name in (attr.name, attr.name.encode("ascii", "ignore")):
                             try:
-                                attr_value = feature[attr_name]
-                                attribute_values.append(
-                                    attr.sub(attr_value) if attr.filter(attr_value)
+                                raw_attr_value = feature[attr_name]
+                                attr_value = (
+                                    attr.sub(raw_attr_value) if attr.filter(raw_attr_value)
                                     else None)
-
+                                
+                                attribute_values[i] = attr_value
+                                layer_attribute_values.append(attr_value)
                                 found_attributes.add(attr.name)
                                 break
                             except:
                                 pass
-
+                    
                     # Don't rasterize polygons where any of the selected attributes
                     # are null, unless the user explicitly allows it.
-                    if not self._allow_nulls and not ValidationHelper.no_empty_values(attribute_values):
+                    if not self._allow_nulls and not ValidationHelper.no_empty_values(layer_attribute_values):
                         continue
 
+                    if self._extended_attributes is not None and not self._extended_attributes.empty:
+                        feature_attribute_names = set(feature.keys()) - {self._id_attribute}
+                        join_keys = list(
+                            feature_attribute_names.intersection(
+                                {c.lower() for c in self._extended_attributes.columns}
+                            )
+                        )
+                        
+                        join_data = pd.DataFrame({k: [feature[k]] for k in join_keys})
+                        extended_attributes = pd.merge(
+                            join_data.astype(str),
+                            self._extended_attributes.rename(columns=str.lower).astype(str),
+                            on=join_keys)
+
+                        if extended_attributes.empty or len(extended_attributes) > 1:
+                            raise RuntimeError(
+                                "Failed to join extended attribute table in {}, keys: {}".format(
+                                    path, join_keys))
+
+                        extended_attribute_values = extended_attributes.iloc[0].to_dict()
+                        for i, attr_name in enumerate((attr.name.lower() for attr in self._attributes)):
+                            if attr_name in extended_attribute_values:
+                                attribute_values[i] = extended_attribute_values[attr_name]
+                                found_attributes.add(attr_name)
+                    
                     value_id = None
-                    existing_key = [item[0] for item in self._attribute_table.items()
-                                    if item[1] == attribute_values]
+                    existing_key = [k for k, v in self._attribute_table.items()
+                                    if v == attribute_values]
                     if existing_key:
                         value_id = existing_key[0]
                     else:
@@ -366,6 +412,14 @@ class VectorLayer(Layer):
             return field_type_code or field_type_code_family
         except:
             return None
+        finally:
+            ds = None
+
+    def _get_attribute_names(self, path):
+        ds = ogr.Open(path)
+        try:
+            layer = ds.GetLayer()
+            return [attr.name for attr in layer.schema]
         finally:
             ds = None
 
