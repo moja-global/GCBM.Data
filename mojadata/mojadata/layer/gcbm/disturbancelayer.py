@@ -42,12 +42,21 @@ class DisturbanceLayer(Layer):
     :param transition_undisturbed: [optional, CBM4 only] the transition rule definition
         for the disturbance layer for the portion of the stand unaffected by the
         disturbance - no transition/model default if unspecified
-    :type transition: :class:`.TransitionRule`
+    :type transition_undisturbed: :class:`.TransitionRule`
+    :param proportion: [optional, CBM4 only] the proportion of the pixels or cohorts to
+        disturb
+    :type proportion: :class:`.Attribute` or float
+    :param area_basis: [optional, CBM4 only] the proportion type, "total" or "filtered"
+    :type area_basis: str
+    :param sort_id: [optional, CBM4 only] the cohort sort id linked to the disturbance event
+    :type sort_id: :class:`.Attribute` or int
+    :param filter_id: [optional, CBM4 only] the cohort filter id linked to the disturbance event
+    :type filter_id: :class:`.Attribute` or int
     '''
 
     def __init__(self, transition_rule_manager, lyr, year, disturbance_type,
                  transition=None, tags=None, conditions=None, transition_undisturbed=None,
-                 proportion=None):
+                 proportion=None, area_basis=None, sort_id=None, filter_id=None):
         super(self.__class__, self).__init__()
         self._transition_rule_manager = transition_rule_manager
         self._layer = lyr
@@ -59,15 +68,25 @@ class DisturbanceLayer(Layer):
         self._tags = ["disturbance"] + (tags or [])
         self._metadata_attributes = []
         self._conditions = conditions
+        self._proportion = proportion
+        self._area_basis = area_basis
+        self._sort_id = sort_id
+        self._filter_id = filter_id
         self._attributes = ["year", "disturbance_type"]
         if proportion:
             self._attributes.append("proportion")
+        if area_basis:
+            self._attributes.append("area_basis")
         if transition:
             self._attributes.append("transition")
         if transition_undisturbed:
             self._attributes.append("transition_undisturbed")
         if conditions:
             self._attributes.append("conditions")
+        if sort_id is not None:
+            self._attributes.append("sort_id")
+        if filter_id is not None:
+            self._attributes.append("filter_id")
 
     @property
     def name(self):
@@ -118,7 +137,10 @@ class DisturbanceLayer(Layer):
         # core disturbance attributes, but make up some additional metadata used
         # by specific modules.
         disturbance_attributes = [
-            attr.db_name for attr in (self._year, self._disturbance_type, self._proportion)
+            attr.db_name for attr in (
+                self._year, self._disturbance_type, self._proportion,
+                self._area_basis, self._sort_id, self._filter_id
+            )
             if isinstance(attr, Attribute)
         ]
 
@@ -178,6 +200,13 @@ class DisturbanceLayer(Layer):
                     if isinstance(self._proportion, Attribute)
                     else float(self._proportion))
 
+            if self._area_basis is not None:
+                values.append(
+                    attr_values.get(self._area_basis.db_name)
+                    if isinstance(self._area_basis, Attribute)
+                    else self._area_basis
+                )
+
             for transition_type, transition in (
                 (TransitionRule.disturbed, self._transition),
                 (TransitionRule.undisturbed, self._transition_undisturbed)
@@ -188,6 +217,18 @@ class DisturbanceLayer(Layer):
 
             if self._conditions:
                 values.append(self._conditions)
+
+            if self._sort_id is not None:
+                values.append(
+                    int(attr_values.get(self._sort_id.db_name))
+                    if isinstance(self._sort_id, Attribute)
+                    else int(self._sort_id))
+
+            if self._filter_id is not None:
+                values.append(
+                    int(attr_values.get(self._filter_id.db_name))
+                    if isinstance(self._filter_id, Attribute)
+                    else int(self._filter_id))
 
             for attr in self._metadata_attributes:
                 values.append(attr_values.get(attr))
