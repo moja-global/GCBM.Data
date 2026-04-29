@@ -121,42 +121,51 @@ class RasterLayer(Layer):
         if not preserve_temp_files:
             cleanup.register_temp_dir(tmp_dir)
 
+        base_pixel_size = requested_pixel_size or min_pixel_size
         original_nodata = self.nodata_value
         if original_nodata is None and self._nodata_value is not None:
             original_nodata = self._nodata_value
 
+        initial_reproj_path = os.path.join(tmp_dir, "initial_reproj_{}.tif".format(self._name))
+        gdal.Warp(
+            initial_reproj_path,
+            self._path,
+            dstSRS=srs,
+            outputBounds=bounds,
+            outputBoundsSRS=srs,
+            warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
+            warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
+            creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+            errorThreshold=0,
+        )
+
         nodata_mask_path = None
         if original_nodata is not None and not self._all_touched:
-            flattened_path = "/vsimem/flattened_{}.tif".format(self._name)
+            flattened_path = os.path.join(tmp_dir, "flattened_{}.tif".format(self._name))
             GDALHelper.calc(
-                self._path, flattened_path, lambda d: d != original_nodata,
+                initial_reproj_path, flattened_path, lambda d: d != original_nodata,
                 data_type=gdal.GDT_Byte, nodata_value=0)
 
-            nodata_mask_path = "/vsimem/nodata_{}.tif".format(self._name)
-            gdal.Warp(nodata_mask_path, flattened_path,
-                      targetAlignedPixels=True,
-                      dstSRS=srs,
-                      resampleAlg="mode",
-                      srcNodata="None",
-                      xRes=requested_pixel_size or min_pixel_size,
-                      yRes=requested_pixel_size or min_pixel_size,
-                      warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
-                      warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
-                      creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
-                      outputBounds=bounds)
+            nodata_mask_path = os.path.join(tmp_dir, "nodata_{}.tif".format(self._name))
+            gdal.Translate(
+                nodata_mask_path, flattened_path,
+                resampleAlg="mode",
+                noData="None",
+                #projWin=bounds,
+                xRes=base_pixel_size,
+                yRes=base_pixel_size,
+                creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+            )
 
         warp_path = os.path.join(tmp_dir, "warp_{}.tif".format(self._name))
-        gdal.Warp(warp_path, self._path,
-                  targetAlignedPixels=True,
-                  dstSRS=srs,
-                  resampleAlg="mode",
-                  srcNodata=original_nodata,
-                  xRes=requested_pixel_size or min_pixel_size,
-                  yRes=requested_pixel_size or min_pixel_size,
-                  warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
-                  warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
-                  outputBounds=bounds)
+        gdal.Translate(
+            warp_path, initial_reproj_path,
+            resampleAlg="mode",
+            noData=original_nodata,
+            xRes=base_pixel_size,
+            yRes=base_pixel_size,
+            creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+        )
 
         if nodata_mask_path:
             masked_path = os.path.join(tmp_dir, "masked_{}.tif".format(self._name))
@@ -168,7 +177,7 @@ class RasterLayer(Layer):
             
             warp_path = masked_path
         
-        output_path = os.path.join(tmp_dir, "{}.tif".format(self._name))
+        output_path = os.path.join(tmp_dir, "prepared_{}.tif".format(self._name))
         is_float = "Float" in self.data_type
         output_type = data_type if data_type is not None \
             else self._data_type if self._data_type is not None \
@@ -183,18 +192,25 @@ class RasterLayer(Layer):
             else self._get_nearest_divisible_resolution(
                 srs, min_pixel_size, RasterLayer.get_pixel_size(warp_path), block_extent)
 
-        gdal.Warp(output_path, warp_path,
-                  targetAlignedPixels=True,
-                  xRes=pixel_size, yRes=pixel_size,
-                  outputType=output_type,
-                  dstNodata=self._nodata_value,
-                  warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
-                  warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"])
+        gdal.Translate(
+            output_path, warp_path,
+            xRes=pixel_size,
+            yRes=pixel_size,
+            outputType=output_type,
+            noData=self._nodata_value,
+            creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+        )
+
+        final_output_path = os.path.join(tmp_dir, "{}.tif".format(self._name))
+
+        GDALHelper.calc(
+            output_path, final_output_path,
+            lambda d: np.where(d == original_nodata, self._nodata_value, d)
+        )
 
         self._drop_nulls(output_path)
 
-        return RasterLayer(output_path, self._attributes, self._attribute_table,
+        return RasterLayer(final_output_path, self._attributes, self._attribute_table,
                            date=self._date, tags=self._tags, allow_nulls=self._allow_nulls)
 
     def _drop_nulls(self, path):

@@ -161,6 +161,7 @@ class BoundingBox(object):
         self._layer.path = final_bbox_path
 
         gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
+        self._info = None
 
     def _pad(self, in_path, out_path, pixel_size):
         info = GDALHelper.info(in_path)
@@ -174,11 +175,13 @@ class BoundingBox(object):
                   targetAlignedPixels=True,
                   warpMemoryLimit=gdal_config.GDAL_MEMORY_LIMIT,
                   warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS)
+                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS,
+                  errorThreshold=0)
 
     def _warp(self, in_path, out_path, pixel_size, memory_limit=None):
+        shutil.copyfile(in_path, out_path)
+        '''
         gdal.Warp(out_path, in_path,
-                  dstSRS=self.srs,
                   xRes=pixel_size, yRes=pixel_size,
                   outputBounds=(self.info["cornerCoordinates"]["upperLeft"][0],
                                 self.info["cornerCoordinates"]["lowerRight"][1],
@@ -187,4 +190,6 @@ class BoundingBox(object):
                   targetAlignedPixels=True,
                   warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
                   warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"])
+                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+                  errorThreshold=0)
+        '''
