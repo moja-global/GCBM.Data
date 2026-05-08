@@ -126,7 +126,7 @@ class RasterLayer(Layer):
         if original_nodata is None and self._nodata_value is not None:
             original_nodata = self._nodata_value
 
-        initial_reproj_path = os.path.join(tmp_dir, "initial_reproj_{}.tif".format(self._name))
+        initial_reproj_path = "/vsimem/initial_reproj_{}.tif".format(self._name)
         gdal.Warp(
             initial_reproj_path,
             self._path,
@@ -141,17 +141,16 @@ class RasterLayer(Layer):
 
         nodata_mask_path = None
         if original_nodata is not None and not self._all_touched:
-            flattened_path = os.path.join(tmp_dir, "flattened_{}.tif".format(self._name))
+            flattened_path = "/vsimem/flattened_{}.tif".format(self._name)
             GDALHelper.calc(
                 initial_reproj_path, flattened_path, lambda d: d != original_nodata,
                 data_type=gdal.GDT_Byte, nodata_value=0)
 
-            nodata_mask_path = os.path.join(tmp_dir, "nodata_{}.tif".format(self._name))
+            nodata_mask_path = "/vsimem/nodata_{}.tif".format(self._name)
             gdal.Translate(
                 nodata_mask_path, flattened_path,
                 resampleAlg="mode",
                 noData="None",
-                #projWin=bounds,
                 xRes=base_pixel_size,
                 yRes=base_pixel_size,
                 creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
