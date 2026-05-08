@@ -109,19 +109,15 @@ class BoundingBox(object):
             return None, messages
 
         layer_path, ext = os.path.splitext(result.path)
-        tmp_path = "{}_tmp{}".format(layer_path, ext)
-        cleanup.register_temp_file(tmp_path)
-        self._warp(result.path, tmp_path, result.pixel_size)
-        result.path = tmp_path
-
         if requested_pixel_size:
             # Clip the target layer by the nodata pixels in the bounding box.
             tmp_path = "{}_clip{}".format(layer_path, ext)
             cleanup.register_temp_file(tmp_path)
             clip_raster(self._layer, result, tmp_path)
+            result.path = tmp_path
 
         output_path = "{}_moja.tiff".format(os.path.basename(layer_path))
-        self._pad(tmp_path, output_path, result.pixel_size)
+        self._pad(result.path, output_path, result.pixel_size)
         result.path = output_path
 
         return result, messages
@@ -152,14 +148,9 @@ class BoundingBox(object):
             shrink_to_data(self._layer, shrink_path)
             self._layer.path = shrink_path
 
-        # Go through the same warping process as the rest of the layers to
-        # ensure the same raster dimensions; sometimes off by 1 without this.
         final_bbox_path = os.path.abspath("bounding_box{}".format(ext))
-        self._warp(self._layer.path, final_bbox_path, self._pixel_size,
-                   memory_limit=gdal_config.TILER_MEMORY_LIMIT)
-
+        shutil.copyfile(self._layer.path, final_bbox_path)
         self._layer.path = final_bbox_path
-
         gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
         self._info = None
 
@@ -177,19 +168,3 @@ class BoundingBox(object):
                   warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
                   creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS,
                   errorThreshold=0)
-
-    def _warp(self, in_path, out_path, pixel_size, memory_limit=None):
-        shutil.copyfile(in_path, out_path)
-        '''
-        gdal.Warp(out_path, in_path,
-                  xRes=pixel_size, yRes=pixel_size,
-                  outputBounds=(self.info["cornerCoordinates"]["upperLeft"][0],
-                                self.info["cornerCoordinates"]["lowerRight"][1],
-                                self.info["cornerCoordinates"]["lowerRight"][0],
-                                self.info["cornerCoordinates"]["upperLeft"][1]),
-                  targetAlignedPixels=True,
-                  warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
-                  warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
-                  creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
-                  errorThreshold=0)
-        '''
