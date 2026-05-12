@@ -207,7 +207,7 @@ class RasterLayer(Layer):
             lambda d: np.where(d == original_nodata, self._nodata_value, d)
         )
 
-        self._drop_nulls(output_path)
+        self._drop_nulls(final_output_path)
 
         return RasterLayer(final_output_path, self._attributes, self._attribute_table,
                            date=self._date, tags=self._tags, allow_nulls=self._allow_nulls)
