@@ -45,7 +45,7 @@ class RasterLayer(Layer):
 
     def __init__(self, path, attributes=None, attribute_table=None,
                  nodata_value=None, data_type=None, date=None, tags=None,
-                 name=None, allow_nulls=False, all_touched=False):
+                 name=None, allow_nulls=False, all_touched=False, resample_alg="mode"):
         super(self.__class__, self).__init__()
         ValidationHelper.require_path(path)
         self._name = name or os.path.splitext(os.path.basename(path))[0]
@@ -57,6 +57,7 @@ class RasterLayer(Layer):
         self._tags = tags or []
         self._allow_nulls = allow_nulls
         self._all_touched = all_touched
+        self._resample_alg = resample_alg
         self._attribute_table = (attribute_table or {}) if allow_nulls else {
             k: v for k, v in viewitems(attribute_table)
             if ValidationHelper.no_empty_values(v)
@@ -159,7 +160,7 @@ class RasterLayer(Layer):
         warp_path = os.path.join(tmp_dir, "warp_{}.tif".format(self._name))
         gdal.Translate(
             warp_path, initial_reproj_path,
-            resampleAlg="mode",
+            resampleAlg=self._resample_alg,
             noData=original_nodata,
             xRes=base_pixel_size,
             yRes=base_pixel_size,
