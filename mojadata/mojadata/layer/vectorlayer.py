@@ -75,6 +75,11 @@ class VectorLayer(Layer):
         self._attributes = attributes
         self._all_touched = all_touched
         self._extended_attributes = extended_attributes
+        self._base_ogr2ogr_opts = [
+            "-gt", "65535", "-lco", "SPATIAL_INDEX=NO",
+            "-nlt", "PROMOTE_TO_MULTI", "-ds_transaction",
+            "-dsco", "SPATIALITE=YES", "-dim", "XY"
+        ]
 
     @property
     def name(self):
@@ -104,28 +109,39 @@ class VectorLayer(Layer):
     def date(self):
         return self._date
 
-    def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
-                   data_type=None, bounds=None, preserve_temp_files=False, **kwargs):
-        tmp_dir = "_".join((os.path.abspath(self._make_name()), str(uuid.uuid1())[:4]))
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
+    @property
+    def pretile_key(self):
+        return "_".join(
+            [os.path.splitext(os.path.basename(self._path))[0]]
+            + [attr.name for attr in self._attributes]
+            + (
+                [attr for attr in self._extended_attributes.columns]
+                if self._extended_attributes is not None else []
+            )
+        )
+    
+    @property
+    def pretile_path(self):
+        return os.path.join(
+            os.path.abspath("pretile"),
+            self.pretile_key,
+            "{}.db".format(self.pretile_key)
+        )
 
-        if not preserve_temp_files:
-            cleanup.register_temp_dir(tmp_dir)
+    def _pretile(self, srs, bounds, **kwargs):
+        working_dir = os.path.dirname(self.pretile_path)
+        os.makedirs(working_dir, exist_ok=True)
+        self._do_initial_transform(working_dir, srs, bounds)
 
-        base_ogr2ogr_opts = ["-gt", "65535", "-lco", "SPATIAL_INDEX=NO",
-                             "-nlt", "PROMOTE_TO_MULTI", "-ds_transaction",
-                             "-dsco", "SPATIALITE=YES", "-dim", "XY"]
-
-        reproj_opts = base_ogr2ogr_opts + ["-t_srs", str(srs)]
-
+    def _do_initial_transform(self, working_dir, srs, bounds):
+        reproj_opts = self._base_ogr2ogr_opts + ["-t_srs", str(srs)]
         if self._layer:
             reproj_opts += [self._layer]
 
         # Do a first pass with just the reprojection and layer selection - sometimes trying to
         # include the spat/spat_srs extent filter in the same operation results in an incorrect
         # spatial extent in the output layer.
-        initial_reproj_path = os.path.join(tmp_dir, self._make_name("_reproj.db"))
+        initial_reproj_path = os.path.join(working_dir, self._make_name("_reproj.db"))
         gdal.VectorTranslate(initial_reproj_path, self._path, format="SQLite", options=reproj_opts)
 
         if bounds:
@@ -146,8 +162,25 @@ class VectorLayer(Layer):
             
             reproj_opts += ["-select", ",".join(selected_attributes)]
 
-        reproj_path = os.path.join(tmp_dir, self._make_name(".db"))
+        reproj_path = os.path.join(working_dir, "{}.db".format(self.pretile_key))
         gdal.VectorTranslate(reproj_path, initial_reproj_path, format="SQLite", options=reproj_opts)
+
+        return reproj_path
+
+    def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
+                   data_type=None, bounds=None, preserve_temp_files=False, **kwargs):
+        tmp_dir = "_".join((os.path.abspath(self._make_name()), str(uuid.uuid1())[:4]))
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+
+        if not preserve_temp_files:
+            cleanup.register_temp_dir(tmp_dir)
+
+        is_pretiled = os.path.exists(self.pretile_path)
+        if is_pretiled:
+            self.add_message((logging.INFO, "{} is pretiled.".format(self._name)))
+
+        reproj_path = self.pretile_path if is_pretiled else self._do_initial_transform(tmp_dir, srs, bounds)
         if not os.path.exists(reproj_path):
             self.add_message((logging.WARN, "No features remaining in the study area - resolution may be too coarse."))
             return None
@@ -168,7 +201,7 @@ class VectorLayer(Layer):
 
         clip_path = os.path.join(tmp_dir, self._make_name("_clip.db"))
         gdal.VectorTranslate(clip_path, reproj_path, format="SQLite",
-                             options=base_ogr2ogr_opts + [
+                             options=self._base_ogr2ogr_opts + [
             "-select", self._id_attribute,
             "-where", where_clause])
 

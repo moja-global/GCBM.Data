@@ -116,8 +116,19 @@ class DisturbanceLayer(Layer):
     def attribute_table(self):
         return self._build_attribute_table(self._layer)
 
+    @property
+    def pretile_key(self):
+        return self._layer.pretile_key
+    
+    @property
+    def pretile_path(self):
+        return self._layer.pretile_path
+
     def is_empty(self):
         return self._layer.is_empty()
+
+    def _pretile(self, srs, bounds, **kwargs):
+        self._layer.pretile(srs, bounds, **kwargs)
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
                    data_type=None, bounds=None, **kwargs):

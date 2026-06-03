@@ -59,6 +59,16 @@ class Layer(object):
         raise NotImplementedError()
 
     @property
+    def pretile_key(self):
+        '''The pretiling key, if applicable.'''
+        raise NotImplementedError()
+
+    @property
+    def pretile_path(self):
+        '''The pretiling path, if applicable.'''
+        raise NotImplementedError()
+
+    @property
     def pixel_size(self):
         '''The pixel size in the current projection units.'''
         info = GDALHelper.info(self.path)
@@ -152,6 +162,31 @@ class Layer(object):
             return None, self.messages
         finally:
             gdal.PopErrorHandler()
+
+    def pretile(self, srs, bounds, **kwargs):
+        '''
+        Reprojects and crops the layer in preparation for full tiling as an
+        optimization.
+
+        :param srs: the destination projection
+        :type srs: :class:`.osr.SpatialReference`
+        :param bounds: [optional] the spatial extent to rasterize to, in the
+            coordinate system specified by :param srs:
+        :type bounds: 4-tuple of float:
+            upper-left x, lower-right y, lower-right x, upper-left y
+        '''
+        gdal.PushErrorHandler(self._gdal_error_handler)
+        try:
+            self._pretile(srs, bounds, **kwargs)
+            return self.messages
+        except Exception as e:
+            self.add_message((logging.ERROR, str(e)))
+            return self.messages
+        finally:
+            gdal.PopErrorHandler()
+
+    def _pretile(self, srs, bounds, **kwargs):
+        pass
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
                    data_type=None, bounds=None, preserve_temp_files=False, **kwargs):

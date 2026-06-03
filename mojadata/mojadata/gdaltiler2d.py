@@ -5,7 +5,7 @@ from mojadata.util.log import get_logger
 from future.utils import viewitems
 from mojadata.util import gdal
 from mojadata.tiler import Tiler
-from mojadata.cleanup import cleanup
+import mojadata.cleanup as cleanup
 from mojadata import config as gdal_config
 
 class GdalTiler2D(Tiler):
@@ -52,9 +52,17 @@ class GdalTiler2D(Tiler):
         os.makedirs(output_path, exist_ok=True)
         os.chdir(output_path)
         try:
-            with cleanup():
+            with cleanup.cleanup():
+                cleanup.register_temp_dir("pretile")
                 self._bounding_box.init()
                 layers = self._remove_duplicates(layers)
+                pretile_layers = []
+                unique_pretile_keys = set()
+                for layer in layers:
+                    if layer.pretile_key not in unique_pretile_keys:
+                        unique_pretile_keys.add(layer.pretile_key)
+                        pretile_layers.append(layer)
+
                 layer_config = {
                     "tile_extent": self._tile_extent,
                     "block_extent": self._block_extent,
@@ -63,6 +71,16 @@ class GdalTiler2D(Tiler):
                 }
 
                 self._log.info("Processing layers...")
+                pool = self._create_pool(_pool_init, (self._bounding_box, pretile_layers, layer_config))
+                for i in range(len(pretile_layers)):
+                    pool.apply_async(
+                        _pretile_layer, (i, self._total_mem_bytes),
+                        callback=self._handle_tile_layer_result
+                    )
+                
+                pool.close()
+                pool.join()
+
                 pool = self._create_pool(_pool_init, (self._bounding_box, layers, layer_config))
                 for i in range(len(layers)):
                     pool.apply_async(
@@ -111,6 +129,35 @@ def _pool_init(_bounding_box, _layers, _config):
     layers = _layers
     config = _config
 
+def _pretile_layer(layer_idx, workers=None, gdal_memory_limit=None):
+    workers = workers or gdal_config.PROCESS_POOL_SIZE
+    gdal_memory_limit = gdal_memory_limit or gdal_config.GDAL_MEMORY_LIMIT
+    if workers > len(layers):
+        gdal_config.refresh(len(layers), gdal_memory_limit)
+
+    gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
+
+    messages = []
+    layer_name = ""
+    try:
+        layer = layers[layer_idx]
+        layer_name = layer.name
+        messages.append((logging.INFO, "Pretiling layer: {}".format(layer_name)))
+
+
+        if layer.is_empty():
+            messages.append((logging.WARNING, "Layer '{}' is empty - skipping.".format(layer_name)))
+            return layer_name, False, messages
+
+        layer_messages = bbox.pretile(layer)
+        messages += layer_messages
+    except Exception as e:
+        messages.append((logging.ERROR, "Error in layer '{}': {}".format(layer_name, e)))
+        messages.append((logging.DEBUG, traceback.format_exc()))
+        return layer_name, False, messages
+
+    return layer_name, True, messages
+
 def _tile_layer(layer_idx, workers=None, gdal_memory_limit=None):
     workers = workers or gdal_config.PROCESS_POOL_SIZE
     gdal_memory_limit = gdal_memory_limit or gdal_config.GDAL_MEMORY_LIMIT
@@ -124,7 +171,7 @@ def _tile_layer(layer_idx, workers=None, gdal_memory_limit=None):
     try:
         layer = layers[layer_idx]
         layer_name = layer.name
-        with cleanup():
+        with cleanup.cleanup():
             messages.append((logging.INFO, "Processing layer: {}".format(layer_name)))
             if layer.is_empty():
                 messages.append((logging.WARNING, "Layer '{}' is empty - skipping.".format(layer_name)))

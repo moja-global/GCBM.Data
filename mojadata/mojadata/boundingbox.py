@@ -79,6 +79,15 @@ class BoundingBox(object):
         for tile in self._layer.tiles(tile_extent, block_extent):
             yield tile
 
+    def pretile(self, layer):
+        bounds = (self.info["cornerCoordinates"]["upperLeft"][0],
+                  self.info["cornerCoordinates"]["lowerRight"][1],
+                  self.info["cornerCoordinates"]["lowerRight"][0],
+                  self.info["cornerCoordinates"]["upperLeft"][1])
+        
+        messages = layer.pretile(self.srs, bounds)
+        return messages
+
     def normalize(self, layer, block_extent, requested_pixel_size=None, data_type=None):
         '''
         Processes a layer to conform to the bounding box: projection, pixel size,

@@ -1,5 +1,6 @@
 ﻿import os
 import uuid
+import logging
 import numpy as np
 from future.utils import viewitems
 from mojadata.util import gdalconst
@@ -90,9 +91,35 @@ class RasterLayer(Layer):
     @property
     def date(self):
         return self._date
+    
+    @property
+    def pretile_key(self):
+        return os.path.splitext(os.path.basename(self._path))[0]
+    
+    @property
+    def pretile_path(self):
+        return os.path.join(
+            os.path.abspath("pretile"),
+            self.pretile_key,
+            os.path.basename(self._path)
+        )
 
     def is_empty(self):
         return RasterLayer.is_empty_layer(self._path)
+
+    def _pretile(self, srs, bounds, memory_limit=None, **kwargs):
+        os.makedirs(os.path.dirname(self.pretile_path), exist_ok=True)
+        gdal.Warp(
+            self.pretile_path,
+            self._path,
+            dstSRS=srs,
+            outputBounds=bounds,
+            outputBoundsSRS=srs,
+            warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
+            warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
+            creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+            errorThreshold=0,
+        )
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
                    data_type=None, bounds=None, preserve_temp_files=False, memory_limit=None,
@@ -126,19 +153,28 @@ class RasterLayer(Layer):
         original_nodata = self.nodata_value
         if original_nodata is None and self._nodata_value is not None:
             original_nodata = self._nodata_value
+        
+        is_pretiled = os.path.exists(self.pretile_path)
+        if is_pretiled:
+            self.add_message((logging.INFO, "{} is pretiled.".format(self._name)))
 
-        initial_reproj_path = "/vsimem/initial_reproj_{}.tif".format(self._name)
-        gdal.Warp(
-            initial_reproj_path,
-            self._path,
-            dstSRS=srs,
-            outputBounds=bounds,
-            outputBoundsSRS=srs,
-            warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
-            warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
-            creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
-            errorThreshold=0,
+        initial_reproj_path = (
+            self.pretile_path if is_pretiled
+            else "/vsimem/initial_reproj_{}.tif".format(self._name)
         )
+
+        if not is_pretiled:
+            gdal.Warp(
+                initial_reproj_path,
+                self._path,
+                dstSRS=srs,
+                outputBounds=bounds,
+                outputBoundsSRS=srs,
+                warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
+                warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+                errorThreshold=0,
+            )
 
         nodata_mask_path = None
         if original_nodata is not None and not self._all_touched:
