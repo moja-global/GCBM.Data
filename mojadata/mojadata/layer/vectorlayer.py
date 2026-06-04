@@ -113,11 +113,7 @@ class VectorLayer(Layer):
     def pretile_key(self):
         return "_".join(
             [os.path.splitext(os.path.basename(self._path))[0]]
-            + [attr.name for attr in self._attributes]
-            + (
-                [attr for attr in self._extended_attributes.columns]
-                if self._extended_attributes is not None else []
-            )
+            + ([self._layer] if self._layer else [])
         )
     
     @property
@@ -141,9 +137,30 @@ class VectorLayer(Layer):
         # Do a first pass with just the reprojection and layer selection - sometimes trying to
         # include the spat/spat_srs extent filter in the same operation results in an incorrect
         # spatial extent in the output layer.
-        initial_reproj_path = os.path.join(working_dir, self._make_name("_reproj.db"))
+        initial_reproj_path = os.path.join(working_dir, "{}.db".format(self.pretile_key))
         gdal.VectorTranslate(initial_reproj_path, self._path, format="SQLite", options=reproj_opts)
 
+        return initial_reproj_path
+
+    def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
+                   data_type=None, bounds=None, preserve_temp_files=False, **kwargs):
+        tmp_dir = "_".join((os.path.abspath(self._make_name()), str(uuid.uuid1())[:4]))
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+
+        if not preserve_temp_files:
+            cleanup.register_temp_dir(tmp_dir)
+
+        is_pretiled = os.path.exists(self.pretile_path)
+        if is_pretiled:
+            self.add_message((logging.INFO, "{} is pretiled.".format(self._name)))
+
+        initial_reproj_path = (
+            self.pretile_path if is_pretiled
+            else self._do_initial_transform(tmp_dir, srs, bounds)
+        )
+
+        reproj_opts = self._base_ogr2ogr_opts + ["-t_srs", str(srs)]
         if bounds:
             reproj_opts += ["-spat_srs", str(srs), "-spat"] \
                 + [str(coord) for coord in bounds]
@@ -162,25 +179,9 @@ class VectorLayer(Layer):
             
             reproj_opts += ["-select", ",".join(selected_attributes)]
 
-        reproj_path = os.path.join(working_dir, "{}.db".format(self.pretile_key))
+        reproj_path = os.path.join(tmp_dir, "{}_selection.db".format(self.pretile_key))
         gdal.VectorTranslate(reproj_path, initial_reproj_path, format="SQLite", options=reproj_opts)
 
-        return reproj_path
-
-    def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
-                   data_type=None, bounds=None, preserve_temp_files=False, **kwargs):
-        tmp_dir = "_".join((os.path.abspath(self._make_name()), str(uuid.uuid1())[:4]))
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-
-        if not preserve_temp_files:
-            cleanup.register_temp_dir(tmp_dir)
-
-        is_pretiled = os.path.exists(self.pretile_path)
-        if is_pretiled:
-            self.add_message((logging.INFO, "{} is pretiled.".format(self._name)))
-
-        reproj_path = self.pretile_path if is_pretiled else self._do_initial_transform(tmp_dir, srs, bounds)
         if not os.path.exists(reproj_path):
             self.add_message((logging.WARN, "No features remaining in the study area - resolution may be too coarse."))
             return None

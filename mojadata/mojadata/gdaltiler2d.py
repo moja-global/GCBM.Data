@@ -141,10 +141,8 @@ def _pretile_layer(layer_idx, workers=None, gdal_memory_limit=None):
     layer_name = ""
     try:
         layer = layers[layer_idx]
-        layer_name = layer.name
-        messages.append((logging.INFO, "Pretiling layer: {}".format(layer_name)))
-
-
+        layer_name = layer.pretile_key
+        messages.append((logging.INFO, "Pretiled layer: {}".format(layer_name)))
         if layer.is_empty():
             messages.append((logging.WARNING, "Layer '{}' is empty - skipping.".format(layer_name)))
             return layer_name, False, messages
@@ -172,7 +170,7 @@ def _tile_layer(layer_idx, workers=None, gdal_memory_limit=None):
         layer = layers[layer_idx]
         layer_name = layer.name
         with cleanup.cleanup():
-            messages.append((logging.INFO, "Processing layer: {}".format(layer_name)))
+            messages.append((logging.INFO, "Processed layer: {}".format(layer_name)))
             if layer.is_empty():
                 messages.append((logging.WARNING, "Layer '{}' is empty - skipping.".format(layer_name)))
                 return layer_name, False, messages
