@@ -1,5 +1,7 @@
-﻿import math
+﻿import os
+import math
 import logging
+import uuid
 from mojadata.util import gdalconst
 from mojadata.util.gdalhelper import GDALHelper
 from mojadata.util import gdal
@@ -61,12 +63,16 @@ class Layer(object):
     @property
     def pretile_key(self):
         '''The pretiling key, if applicable.'''
-        raise NotImplementedError()
+        return str(uuid.uuid1())
 
     @property
     def pretile_path(self):
         '''The pretiling path, if applicable.'''
-        raise NotImplementedError()
+        return os.path.join(
+            os.path.abspath("pretile"),
+            self.pretile_key,
+            os.path.basename(self.path)
+        )
 
     @property
     def pixel_size(self):
