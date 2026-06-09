@@ -239,6 +239,7 @@ class VectorLayer(Layer):
             noData=self._nodata_value,
             creationOptions=gdal_config.GDAL_RASTERIZE_CREATION_OPTIONS + ["SPARSE_OK=YES"],
             targetAlignedPixels=True,
+            optim="VECTOR",
             allTouched=self._all_touched,
             options=gdal_config.GDAL_RASTERIZE_OPTIONS.copy() \
                 + ["-ot", GDALHelper.type_code_lookup.get(self._data_type) or "Float32"])

@@ -41,7 +41,6 @@ def refresh(pool_size=None, total_mem_bytes=None):
     '''
     global GDAL_THREADS
     global PROCESS_POOL_SIZE
-    global MEMORY_LIMIT_SCALE
     global TILER_MEMORY_LIMIT
     global PROCESS_MEMORY_LIMIT
     global GDAL_MEMORY_LIMIT

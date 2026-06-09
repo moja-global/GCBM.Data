@@ -5,6 +5,7 @@ from ftfy import guess_bytes
 from collections import OrderedDict
 from multiprocessing import Pool
 from mojadata import config
+from mojadata.util import refresh_gdal_config
 import numpy as np
 
 class Tiler(object):
@@ -17,6 +18,7 @@ class Tiler(object):
         self._workers = workers
         self._total_mem_bytes = total_mem_bytes
         config.refresh(workers, total_mem_bytes)
+        refresh_gdal_config()
 
     def tile(self, items):
         '''

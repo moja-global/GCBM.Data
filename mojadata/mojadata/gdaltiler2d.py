@@ -7,6 +7,7 @@ from mojadata.util import gdal
 from mojadata.tiler import Tiler
 import mojadata.cleanup as cleanup
 from mojadata import config as gdal_config
+from mojadata.util import refresh_gdal_config
 
 class GdalTiler2D(Tiler):
     '''
@@ -46,6 +47,7 @@ class GdalTiler2D(Tiler):
         workers = self._workers or gdal_config.PROCESS_POOL_SIZE
         if workers > len(layers):
             gdal_config.refresh(len(layers), self._total_mem_bytes)
+            refresh_gdal_config()
         
         self._skipped_layers = []
         working_path = os.path.abspath(os.curdir)
@@ -134,8 +136,7 @@ def _pretile_layer(layer_idx, workers=None, gdal_memory_limit=None):
     gdal_memory_limit = gdal_memory_limit or gdal_config.GDAL_MEMORY_LIMIT
     if workers > len(layers):
         gdal_config.refresh(len(layers), gdal_memory_limit)
-
-    gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
+        refresh_gdal_config()
 
     messages = []
     layer_name = ""
@@ -161,8 +162,7 @@ def _tile_layer(layer_idx, workers=None, gdal_memory_limit=None):
     gdal_memory_limit = gdal_memory_limit or gdal_config.GDAL_MEMORY_LIMIT
     if workers > len(layers):
         gdal_config.refresh(len(layers), gdal_memory_limit)
-
-    gdal.SetCacheMax(gdal_config.GDAL_MEMORY_LIMIT)
+        refresh_gdal_config()
 
     messages = []
     layer_name = ""
