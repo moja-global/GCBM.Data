@@ -1,3 +1,6 @@
+import warnings
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
 try:
     from osgeo import gdal
 except ImportError:
