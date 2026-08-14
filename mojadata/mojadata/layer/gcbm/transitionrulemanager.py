@@ -63,12 +63,12 @@ class _TransitionRuleManager(object):
         def classifier_names(self):
             return self._classifier_values.keys()
 
-    def __init__(self):
+    def __init__(self, transition_id_offset=0):
         self._lock = RLock()
         self._transition_disturbed = {}
         self._transition_undisturbed = {}
-        self._next_id = 1
-        self._next_undisturbed_id = 1
+        self._next_id = 1 + transition_id_offset
+        self._next_undisturbed_id = 1 + transition_id_offset
 
     def get_or_add(self, transition_type, regen_delay, age_after, classifier_values=None):
         '''
