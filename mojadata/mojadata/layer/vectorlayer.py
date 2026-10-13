@@ -112,13 +112,16 @@ class VectorLayer(Layer):
 
     @property
     def pretile_key(self):
+        layer_attributes = self._get_attribute_names(self._path)
         return "_".join(
             [os.path.splitext(os.path.basename(self._path))[0]]
             + ([self._layer] if self._layer else [])
             + [attr.name for attr in self._attributes]
             + (
-                [attr for attr in self._extended_attributes.columns]
-                if self._extended_attributes is not None else []
+                [
+                    attr for attr in self._extended_attributes.columns
+                    if attr.lower() in layer_attributes
+                ] if self._extended_attributes is not None else []
             )
         )
     

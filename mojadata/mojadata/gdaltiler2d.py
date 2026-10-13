@@ -76,7 +76,7 @@ class GdalTiler2D(Tiler):
                 pool = self._create_pool(_pool_init, (self._bounding_box, pretile_layers, layer_config))
                 for i in range(len(pretile_layers)):
                     pool.apply_async(
-                        _pretile_layer, (i, self._total_mem_bytes),
+                        _pretile_layer, (i,), {"gdal_memory_limit": self._total_mem_bytes},
                         callback=self._handle_tile_layer_result
                     )
                 
@@ -86,7 +86,7 @@ class GdalTiler2D(Tiler):
                 pool = self._create_pool(_pool_init, (self._bounding_box, layers, layer_config))
                 for i in range(len(layers)):
                     pool.apply_async(
-                        _tile_layer, (i, self._total_mem_bytes),
+                        _tile_layer, (i,), {"gdal_memory_limit": self._total_mem_bytes},
                         callback=self._handle_tile_layer_result)
 
                 pool.close()
