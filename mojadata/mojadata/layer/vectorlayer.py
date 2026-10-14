@@ -403,9 +403,9 @@ class VectorLayer(Layer):
                                     path, join_keys))
 
                         extended_attribute_values = extended_attributes.iloc[0].to_dict()
-                        for i, attr_name in enumerate((attr.name.lower() for attr in self._attributes)):
-                            if attr_name in extended_attribute_values:
-                                attribute_values[i] = extended_attribute_values[attr_name]
+                        for i, attr_name in enumerate((attr.name for attr in self._attributes)):
+                            if attr_name.lower() in extended_attribute_values:
+                                attribute_values[i] = extended_attribute_values[attr_name.lower()]
                                 found_attributes.add(attr_name)
                     
                     value_id = None
