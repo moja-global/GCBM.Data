@@ -56,7 +56,7 @@ class DisturbanceLayer(Layer):
 
     def __init__(self, transition_rule_manager, lyr, year, disturbance_type,
                  transition=None, tags=None, conditions=None, transition_undisturbed=None,
-                 proportion=None, area_basis=None, sort_id=None, filter_id=None):
+                 proportion=None, area_basis=None, sort_id=None, filter_id=None, enable_merge=None):
         super(self.__class__, self).__init__()
         self._transition_rule_manager = transition_rule_manager
         self._layer = lyr
@@ -68,10 +68,10 @@ class DisturbanceLayer(Layer):
         self._tags = ["disturbance"] + (tags or [])
         self._metadata_attributes = []
         self._conditions = conditions
-        self._proportion = proportion
         self._area_basis = area_basis
         self._sort_id = sort_id
         self._filter_id = filter_id
+        self._enable_merge = enable_merge
         self._attributes = ["year", "disturbance_type"]
         if proportion:
             self._attributes.append("proportion")
@@ -87,6 +87,8 @@ class DisturbanceLayer(Layer):
             self._attributes.append("sort_id")
         if filter_id is not None:
             self._attributes.append("filter_id")
+        if enable_merge is not None:
+            self._attributes.append("enable_merge")
 
     @property
     def name(self):
@@ -241,12 +243,32 @@ class DisturbanceLayer(Layer):
                     if isinstance(self._filter_id, Attribute)
                     else int(self._filter_id))
 
+            if self._enable_merge is not None:
+                values.append(
+                    self._to_bool(attr_values.get(self._enable_merge.db_name))
+                    if isinstance(self._enable_merge, Attribute)
+                    else self._to_bool(self._enable_merge))
+
             for attr in self._metadata_attributes:
                 values.append(attr_values.get(attr))
 
             attr_table[pixel_value] = values
 
         return attr_table
+
+    def _to_bool(self, v):
+        bool_lookup = {
+            "true": True,
+            "True": True,
+            "TRUE": True,
+            1: True,
+            "false": False,
+            "False": False,
+            "FALSE": False,
+            0: False,
+        }
+
+        return bool_lookup[v]
 
     def _record_transition(self, transition_type, transition, attr_values):
         regen_delay = attr_values.get(transition.regen_delay.db_name) \
