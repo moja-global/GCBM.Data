@@ -4,6 +4,7 @@ import logging
 import json
 import pandas as pd
 import shutil
+from glob import glob
 from mojadata import cleanup
 from mojadata.util import ogr
 from mojadata.util import gdal
@@ -168,7 +169,9 @@ class VectorLayer(Layer):
             reproj_opts += ["-select", ",".join(selected_attributes)]
 
         reproj_path = os.path.join(working_dir, "{}.db".format(self.pretile_key))
-        gdal.VectorTranslate(reproj_path, initial_reproj_path, format="SQLite", options=reproj_opts)
+        ds = gdal.VectorTranslate(reproj_path, initial_reproj_path, format="SQLite", options=reproj_opts)
+        ds.FlushCache()
+        del ds
 
         return reproj_path
 
@@ -186,7 +189,11 @@ class VectorLayer(Layer):
             self.add_message((logging.INFO, "{} is pretiled.".format(self._name)))
             reproj_path = os.path.join(tmp_dir, "{}.db".format(self.pretile_key))
             if os.path.exists(self.pretile_path):
-                shutil.copyfile(self.pretile_path, reproj_path)
+                # Ensure all accessory files are copied in case the WAL hasn't been written back.
+                for pretile_file_path in glob("{}.*".format(os.path.splitext(self.pretile_path)[0])):
+                    pretile_file_ext = os.path.splitext(pretile_file_path)[1]
+                    dest_path = "{}{}".format(os.path.splitext(reproj_path)[0], pretile_file_ext)
+                    shutil.copyfile(pretile_file_path, dest_path)
         else:
             reproj_path = self._do_initial_transform(tmp_dir, srs, bounds)
         
