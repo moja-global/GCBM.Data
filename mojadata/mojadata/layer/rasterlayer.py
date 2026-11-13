@@ -113,7 +113,12 @@ class RasterLayer(Layer):
             self.pretile_path,
             self._path,
             dstSRS=srs,
-            outputBounds=bounds,
+            outputBounds=[
+                min(bounds[0], bounds[2]) * 0.9,
+                min(bounds[1], bounds[3]) * 0.9,
+                max(bounds[0], bounds[2]) * 1.1,
+                max(bounds[1], bounds[3]) * 1.1
+            ],
             outputBoundsSRS=srs,
             warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
             warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
@@ -168,7 +173,12 @@ class RasterLayer(Layer):
                 initial_reproj_path,
                 self._path,
                 dstSRS=srs,
-                outputBounds=bounds,
+                outputBounds=[
+                    min(bounds[0], bounds[2]) * 0.9,
+                    min(bounds[1], bounds[3]) * 0.9,
+                    max(bounds[0], bounds[2]) * 1.1,
+                    max(bounds[1], bounds[3]) * 1.1
+                ] if bounds else None,
                 outputBoundsSRS=srs,
                 warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
                 warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
