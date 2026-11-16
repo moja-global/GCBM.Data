@@ -113,39 +113,26 @@ class RasterLayer(Layer):
             self.pretile_path,
             self._path,
             dstSRS=srs,
-            outputBounds=[
-                min(bounds[0], bounds[2]) * 0.9,
-                min(bounds[1], bounds[3]) * 0.9,
-                max(bounds[0], bounds[2]) * 1.1,
-                max(bounds[1], bounds[3]) * 1.1
-            ],
+            outputBounds=bounds,
             outputBoundsSRS=srs,
             warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
-            warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy() + [
+                    "SAMPLE_GRID=YES",  # For very different bounding box vs. layer projections,
+                    "SAMPLE_STEPS=ALL", # the first 3 options try to ensure that no pixels are
+                    "SOURCE_EXTRA=10",  # missed from output bounds.
+                    "NODATA_VALUES_PCT_THRESHOLD={}".format(
+                        100 if self._all_touched else 51
+                    ) # Consider majority nodata vs. data.
+                ],
             creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
             errorThreshold=0,
         )
 
-    def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
-                   data_type=None, bounds=None, preserve_temp_files=False, memory_limit=None,
-                   **kwargs):
-        '''
-        About resampling rasters to a coarser resolution:
-            - GDALWarp with "mode" resampling ignores nodata by default, i.e. a 95% nodata / 5% data
-              pixel -> data pixel in resampled layer.
-            - srcnodata="None" allows nodata to be considered, but then there can be more of the
-              single nodata value pixels than the count of any distinct data value making up the
-              resampled pixel, causing errors the other way: nodata pixels where there should be data.
-            - Solution is multi-step:
-                - Before resampling, create a mask layer:
-                    - Start with a copy of the layer being resampled.
-                    - Flatten all the non-nodata values to 1.
-                    - Do a mode resample with srcnodata="None" to come up with a simple majority
-                      data/nodata mask.
-                - Do a "mode" resample of the original layer using the defaults, i.e. let it exclude
-                  nodata from the calculation.
-                - Apply the data/nodata mask to remove any extra pixels that were actually majority nodata.
-        '''
+    def _rasterize(
+        self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
+        data_type=None, bounds=None, preserve_temp_files=False, memory_limit=None,
+        **kwargs
+    ):
         tmp_dir = "_".join((os.path.abspath(self._name), str(uuid.uuid1())[:4]))
 
         if not os.path.exists(tmp_dir):
@@ -173,34 +160,19 @@ class RasterLayer(Layer):
                 initial_reproj_path,
                 self._path,
                 dstSRS=srs,
-                outputBounds=[
-                    min(bounds[0], bounds[2]) * 0.9,
-                    min(bounds[1], bounds[3]) * 0.9,
-                    max(bounds[0], bounds[2]) * 1.1,
-                    max(bounds[1], bounds[3]) * 1.1
-                ] if bounds else None,
+                outputBounds=bounds,
                 outputBoundsSRS=srs,
                 warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
-                warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy() + [
+                    "SAMPLE_GRID=YES",  # For very different bounding box vs. layer projections,
+                    "SAMPLE_STEPS=ALL", # the first 3 options try to ensure that no pixels are
+                    "SOURCE_EXTRA=10",  # missed from output bounds.
+                    "NODATA_VALUES_PCT_THRESHOLD={}".format(
+                        100 if self._all_touched else 51
+                    ) # Consider majority nodata vs. data.
+                ],
                 creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
                 errorThreshold=0,
-            )
-
-        nodata_mask_path = None
-        if original_nodata is not None and not self._all_touched:
-            flattened_path = "/vsimem/flattened_{}.tif".format(self._name)
-            GDALHelper.calc(
-                initial_reproj_path, flattened_path, lambda d: d != original_nodata,
-                data_type=gdal.GDT_Byte, nodata_value=0)
-
-            nodata_mask_path = "/vsimem/nodata_{}.tif".format(self._name)
-            gdal.Translate(
-                nodata_mask_path, flattened_path,
-                resampleAlg="mode",
-                noData="None",
-                xRes=base_pixel_size,
-                yRes=base_pixel_size,
-                creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
             )
 
         warp_path = os.path.join(tmp_dir, "warp_{}.tif".format(self._name))
@@ -213,16 +185,6 @@ class RasterLayer(Layer):
             creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
         )
 
-        if nodata_mask_path:
-            masked_path = os.path.join(tmp_dir, "masked_{}.tif".format(self._name))
-            GDALHelper.calc(
-                [warp_path, nodata_mask_path],
-                masked_path,
-                lambda d: np.where(d[1] == 0, original_nodata, d[0]),
-                nodata_value=original_nodata)
-            
-            warp_path = masked_path
-        
         output_path = os.path.join(tmp_dir, "prepared_{}.tif".format(self._name))
         is_float = "Float" in self.data_type
         output_type = data_type if data_type is not None \
