@@ -10,6 +10,7 @@ from mojadata.util.gdalhelper import GDALHelper
 from mojadata import config as gdal_config
 from mojadata.layer.layer import Layer
 from mojadata import cleanup
+from pyproj.transformer import Transformer
 
 
 class RasterLayer(Layer):
@@ -109,20 +110,41 @@ class RasterLayer(Layer):
 
     def _pretile(self, srs, bounds, memory_limit=None, **kwargs):
         os.makedirs(os.path.dirname(self.pretile_path), exist_ok=True)
-        gdal.Warp(
-            self.pretile_path,
+
+        # First, clip to bounding box extent without reprojecting; this is a
+        # performance optimization to shrink the area that needs to be reprojected.
+        pretile_clip_path = "/vsimem/{}/pretile_clip_{}.tif".format(
+            self.pretile_key, os.path.basename(self._path)
+        )
+
+        ds = gdal.Warp(
+            pretile_clip_path,
             self._path,
-            dstSRS=srs,
             outputBounds=bounds,
             outputBoundsSRS=srs,
             warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
-                warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy() + [
-                    "SAMPLE_GRID=YES", # For very different bounding box vs. layer projections,
-                    "SAMPLE_STEPS=42", # the first 3 options try to ensure that no pixels are
-                    "SOURCE_EXTRA=10", # missed from output bounds.
-                ],
+            warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
             creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
-            errorThreshold=0,
+        )
+
+        # Then perform the reprojection on the clipped area, but also resample to
+        # a finer resolution so that pixels at the original resolution that are only
+        # partially within the output bounds are not dropped.
+        warp_opts = gdal.SuggestedWarpOutput(ds, ["DST_SRS={}".format(srs)])
+        gdal.Warp(
+            self.pretile_path,
+            ds,
+            dstSRS=srs,
+            outputBounds=bounds,
+            outputBoundsSRS=srs,
+            width=warp_opts.width,
+            height=warp_opts.height,
+            warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
+            warpOptions=(
+                gdal_config.GDAL_WARP_OPTIONS.copy()
+                + ["NODATA_VALUES_PCT_THRESHOLD={}".format(100 if self._all_touched else 51)]
+            ),
+            creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
         )
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
@@ -168,20 +190,44 @@ class RasterLayer(Layer):
         )
 
         if not is_pretiled:
+            pretile_clip_path = "_pretile_clip".join(os.path.splitext(initial_reproj_path))
+            width = None
+            height = None
+            if bounds:
+                # First, clip to bounding box extent without reprojecting; this is a
+                # performance optimization to shrink the area that needs to be reprojected.
+                ds = gdal.Warp(
+                    pretile_clip_path,
+                    self._path,
+                    outputBounds=bounds,
+                    outputBoundsSRS=srs,
+                    warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
+                    warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy(),
+                    creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+                )
+
+                warp_opts = gdal.SuggestedWarpOutput(ds, ["DST_SRS={}".format(srs)])
+                width = warp_opts.width
+                height = warp_opts.height
+                del ds
+
+            # Then perform the reprojection on the clipped area, but also resample to
+            # a finer resolution so that pixels at the original resolution that are only
+            # partially within the output bounds are not dropped.
             gdal.Warp(
                 initial_reproj_path,
-                self._path,
+                pretile_clip_path if bounds else self._path,
                 dstSRS=srs,
                 outputBounds=bounds,
                 outputBoundsSRS=srs,
+                width=width,
+                height=height,
                 warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
-                warpOptions=gdal_config.GDAL_WARP_OPTIONS.copy() + [
-                    "SAMPLE_GRID=YES", # For very different bounding box vs. layer projections,
-                    "SAMPLE_STEPS=42", # the first 3 options try to ensure that no pixels are
-                    "SOURCE_EXTRA=10", # missed from output bounds.
-                ],
+                warpOptions=(
+                    gdal_config.GDAL_WARP_OPTIONS.copy()
+                    + ["NODATA_VALUES_PCT_THRESHOLD={}".format(100 if self._all_touched else 51)]
+                ),
                 creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
-                errorThreshold=0,
             )
 
         nodata_mask_path = None
