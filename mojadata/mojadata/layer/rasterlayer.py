@@ -234,20 +234,24 @@ class RasterLayer(Layer):
             # Then perform the reprojection on the clipped area, but also resample to
             # a finer resolution so that pixels at the original resolution that are only
             # partially within the output bounds are not dropped.
+            warp_dimensions = {
+                "width": width,
+                "height": height
+            } if width is not None and height is not None else {}
+
             gdal.Warp(
                 initial_reproj_path,
                 pretile_clip_path if bounds else self._path,
                 dstSRS=srs,
                 outputBounds=bounds,
                 outputBoundsSRS=srs,
-                width=width,
-                height=height,
                 warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
                 warpOptions=(
                     gdal_config.GDAL_WARP_OPTIONS.copy()
                     + ["NODATA_VALUES_PCT_THRESHOLD={}".format(100 if self._all_touched else 51)]
                 ),
                 creationOptions=gdal_config.GDAL_WARP_CREATION_OPTIONS + ["SPARSE_OK=YES"],
+                **warp_dimensions,
             )
 
         nodata_mask_path = None
