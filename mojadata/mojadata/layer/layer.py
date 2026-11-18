@@ -100,7 +100,11 @@ class Layer(object):
         ):
             return float(value)
         else:
-            return int(value)
+            ndv = int(value)
+            if (dt == "byte" or dt == str(gdal.GDT_Byte) or "u" in dt) and ndv < 0:
+                return None
+
+            return ndv
 
     @property
     def is_lat_lon(self):

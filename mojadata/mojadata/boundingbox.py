@@ -85,7 +85,7 @@ class BoundingBox(object):
                   self.info["cornerCoordinates"]["lowerRight"][0],
                   self.info["cornerCoordinates"]["upperLeft"][1])
         
-        messages = layer.pretile(self.srs, bounds)
+        messages = layer.pretile(self.srs, bounds, min_dimensions=self.info["size"])
         return messages
 
     def normalize(self, layer, block_extent, requested_pixel_size=None, data_type=None):
@@ -112,7 +112,7 @@ class BoundingBox(object):
 
         result, messages = layer.as_raster_layer(
             self.srs, self._pixel_size, block_extent, requested_pixel_size,
-            data_type, bounds)
+            data_type, bounds, min_dimensions=self.info["size"])
 
         if not result:
             return None, messages

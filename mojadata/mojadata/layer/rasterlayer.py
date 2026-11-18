@@ -108,7 +108,7 @@ class RasterLayer(Layer):
     def is_empty(self):
         return RasterLayer.is_empty_layer(self._path)
 
-    def _pretile(self, srs, bounds, memory_limit=None, **kwargs):
+    def _pretile(self, srs, bounds, memory_limit=None, min_dimensions=None, **kwargs):
         os.makedirs(os.path.dirname(self.pretile_path), exist_ok=True)
 
         # First, clip to bounding box extent without reprojecting; this is a
@@ -131,14 +131,25 @@ class RasterLayer(Layer):
         # a finer resolution so that pixels at the original resolution that are only
         # partially within the output bounds are not dropped.
         warp_opts = gdal.SuggestedWarpOutput(ds, ["DST_SRS={}".format(srs)])
+        use_bbox_size = (
+            min_dimensions is not None
+            and (
+                warp_opts.width < min_dimensions[0]
+                or warp_opts.height < min_dimensions[1]
+            )
+        )
+
+        width = min_dimensions[0] if use_bbox_size else warp_opts.width
+        height = min_dimensions[1] if use_bbox_size else warp_opts.height
+
         gdal.Warp(
             self.pretile_path,
             ds,
             dstSRS=srs,
             outputBounds=bounds,
             outputBoundsSRS=srs,
-            width=warp_opts.width,
-            height=warp_opts.height,
+            width=width,
+            height=height,
             warpMemoryLimit=memory_limit or gdal_config.GDAL_MEMORY_LIMIT,
             warpOptions=(
                 gdal_config.GDAL_WARP_OPTIONS.copy()
@@ -149,7 +160,7 @@ class RasterLayer(Layer):
 
     def _rasterize(self, srs, min_pixel_size, block_extent, requested_pixel_size=None,
                    data_type=None, bounds=None, preserve_temp_files=False, memory_limit=None,
-                   **kwargs):
+                   min_dimensions=None, **kwargs):
         '''
         About resampling rasters to a coarser resolution:
             - GDALWarp with "mode" resampling ignores nodata by default, i.e. a 95% nodata / 5% data
@@ -207,8 +218,17 @@ class RasterLayer(Layer):
                 )
 
                 warp_opts = gdal.SuggestedWarpOutput(ds, ["DST_SRS={}".format(srs)])
-                width = warp_opts.width
-                height = warp_opts.height
+                use_bbox_size = (
+                    min_dimensions is not None
+                    and (
+                        warp_opts.width < min_dimensions[0]
+                        or warp_opts.height < min_dimensions[1]
+                    )
+                )
+
+                width = min_dimensions[0] if use_bbox_size else warp_opts.width
+                height = min_dimensions[1] if use_bbox_size else warp_opts.height
+
                 del ds
 
             # Then perform the reprojection on the clipped area, but also resample to
